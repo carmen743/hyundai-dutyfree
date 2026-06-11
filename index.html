@@ -214,10 +214,22 @@ async function submitForm() {
 function renderResult(text) {
   const urlRegex = /\[([^\]]+)\]\((https?:\/\/[^\)]+)\)/g;
   const boldRegex = /\*\*([^*]+)\*\*/g;
-  let html = text.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
-  html = html.replace(urlRegex, '<a href="$2" style="color:#1a73e8;text-decoration:underline;display:block;margin-top:6px;">$1</a>');
+  
+  const links = [];
+  let linkIndex = 0;
+  let processed = text.replace(urlRegex, (match, linkText, url) => {
+    links.push({ linkText, url });
+    return `%%LINK${linkIndex++}%%`;
+  });
+
+  let html = processed.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
   html = html.replace(boldRegex, '<strong>$1</strong>');
   html = html.replace(/\n/g, '<br>');
+
+  links.forEach((link, i) => {
+    html = html.replace(`%%LINK${i}%%`, `<a href="${link.url}" style="color:#1a73e8;text-decoration:underline;display:block;margin-top:6px;">${link.linkText}</a>`);
+  });
+
   document.getElementById('result-text').innerHTML = html;
 }
 
