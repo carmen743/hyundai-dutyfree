@@ -1,0 +1,345 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<title>여행지 인연 찾기</title>
+<style>
+* { margin:0; padding:0; box-sizing:border-box; -webkit-tap-highlight-color:transparent; }
+body { font-family:'Apple SD Gothic Neo','Noto Sans KR',sans-serif; background:#fff; min-height:100vh; display:flex; justify-content:center; }
+.app { width:100%; max-width:430px; min-height:100vh; background:#fff; display:flex; flex-direction:column; }
+
+/* ===== 인트로 ===== */
+#screen-intro { display:flex; flex-direction:column; align-items:center; padding:56px 28px 40px; flex:1; }
+
+.logo-wrap { width:72px; height:72px; border-radius:18px; overflow:hidden; margin-bottom:28px; background:#E84127; display:flex; align-items:center; justify-content:center; }
+.logo-wrap img { width:100%; height:100%; object-fit:cover; }
+
+.intro-title {
+  font-size:28px; font-weight:900; color:#111; text-align:center;
+  letter-spacing:-0.04em; line-height:1.2; margin-bottom:12px;
+}
+
+.intro-sub { font-size:14px; color:#888; text-align:center; line-height:1.75; margin-bottom:44px; }
+
+.form-group { width:100%; margin-bottom:14px; }
+.form-label { font-size:12px; font-weight:600; color:#444; letter-spacing:0.02em; margin-bottom:7px; display:block; }
+.form-input {
+  width:100%; height:50px; background:#f7f7f7; border:1.5px solid #ebebeb;
+  border-radius:12px; color:#111; font-size:15px; font-family:inherit;
+  padding:0 16px; outline:none; transition:border-color 0.2s, background 0.2s;
+}
+.form-input:focus { border-color:#E84127; background:#fff; }
+.form-input::placeholder { color:#bbb; }
+.select-wrap { position:relative; }
+.form-select {
+  width:100%; height:50px; background:#f7f7f7; border:1.5px solid #ebebeb;
+  border-radius:12px; color:#111; font-size:15px; font-family:inherit;
+  padding:0 16px; outline:none; appearance:none; cursor:pointer; transition:border-color 0.2s;
+}
+.form-select:focus { border-color:#E84127; background:#fff; }
+.form-select option { background:#fff; color:#111; }
+.select-wrap::after { content:'▾'; position:absolute; right:16px; top:50%; transform:translateY(-50%); color:#bbb; pointer-events:none; font-size:12px; }
+
+.btn-primary {
+  width:100%; height:54px; background:#E84127; border:none; border-radius:14px;
+  color:#fff; font-size:16px; font-weight:700; font-family:inherit; cursor:pointer;
+  margin-top:10px; letter-spacing:-0.01em; transition:opacity 0.2s, transform 0.1s;
+}
+.btn-primary:active { transform:scale(0.98); opacity:0.9; }
+.error-msg { font-size:13px; color:#E84127; text-align:center; margin-top:10px; display:none; }
+
+/* ===== 로딩 ===== */
+#screen-loading {
+  display:none; flex-direction:column; align-items:center; justify-content:center;
+  min-height:100vh; padding:40px 28px; background:#fff;
+}
+.loading-logo { width:80px; height:80px; border-radius:20px; overflow:hidden; margin-bottom:36px; animation:pulse 1.5s ease-in-out infinite; background:#E84127; }
+.loading-logo img { width:100%; height:100%; object-fit:cover; }
+@keyframes pulse { 0%,100%{transform:scale(1);opacity:1;} 50%{transform:scale(1.07);opacity:0.8;} }
+.loading-text { font-size:16px; color:#555; text-align:center; min-height:28px; transition:opacity 0.4s; letter-spacing:-0.01em; }
+.loading-dots { display:flex; gap:8px; margin-top:24px; }
+.dot { width:7px; height:7px; border-radius:50%; background:#E84127; opacity:0.3; animation:bounce 1.2s ease-in-out infinite; }
+.dot:nth-child(2){animation-delay:0.2s;} .dot:nth-child(3){animation-delay:0.4s;}
+@keyframes bounce { 0%,80%,100%{transform:scale(0.6);opacity:0.3;} 40%{transform:scale(1.3);opacity:1;} }
+
+/* ===== 결과 ===== */
+#screen-result { display:none; flex-direction:column; min-height:100vh; background:#fff; }
+
+.result-hero { width:100%; height:400px; position:relative; overflow:hidden; background:#f0f0f0; }
+.result-hero img#result-img { width:100%; height:100%; object-fit:cover; display:none; }
+.hero-overlay { position:absolute; inset:0; background:linear-gradient(to bottom,rgba(0,0,0,0.05) 0%,rgba(0,0,0,0.72) 100%); }
+.hero-badge { position:absolute; top:18px; left:18px; font-size:11px; letter-spacing:0.08em; color:rgba(255,255,255,0.85); background:rgba(0,0,0,0.28); padding:5px 12px; border-radius:20px; border:1px solid rgba(255,255,255,0.2); }
+.hero-tagline { position:absolute; bottom:24px; left:22px; right:22px; font-size:21px; font-weight:800; color:#fff; line-height:1.35; letter-spacing:-0.03em; }
+
+.img-placeholder { width:100%; height:100%; background:#f5f5f5; display:flex; flex-direction:column; align-items:center; justify-content:center; gap:12px; }
+.img-placeholder .ph-logo { width:56px; height:56px; border-radius:14px; overflow:hidden; animation:pulse 2s ease-in-out infinite; background:#E84127; }
+.img-placeholder .ph-logo img { width:100%; height:100%; object-fit:cover; }
+.img-placeholder p { font-size:13px; color:#aaa; }
+
+.result-body { padding:0 20px 48px; }
+.profile-card { background:#fafafa; border:1px solid #efefef; border-radius:18px; padding:20px; margin-top:20px; margin-bottom:20px; }
+.profile-name { font-size:22px; font-weight:800; color:#111; margin-bottom:4px; letter-spacing:-0.03em; }
+.profile-meta { font-size:13px; color:#999; margin-bottom:14px; }
+.profile-tags { display:flex; flex-wrap:wrap; gap:7px; margin-bottom:14px; }
+.profile-tag { font-size:12px; color:#E84127; background:rgba(232,65,39,0.08); border:1px solid rgba(232,65,39,0.18); border-radius:20px; padding:4px 11px; }
+.profile-quote { font-size:14px; color:#555; font-style:italic; border-left:2.5px solid #E84127; padding-left:14px; line-height:1.65; }
+
+.story-section { margin-bottom:24px; }
+.section-eyebrow { font-size:11px; letter-spacing:0.1em; color:#E84127; text-transform:uppercase; margin-bottom:14px; display:flex; align-items:center; gap:8px; }
+.section-eyebrow::after { content:''; flex:1; height:1px; background:#ebebeb; }
+.story-text { font-size:15px; color:#444; line-height:1.95; word-break:keep-all; }
+.story-text p { margin-bottom:10px; }
+.story-text p:last-child { margin-bottom:0; }
+.story-highlight { color:#E84127; font-weight:700; }
+
+.lucky-section { background:rgba(232,65,39,0.05); border:1px solid rgba(232,65,39,0.15); border-radius:18px; padding:20px; margin-bottom:24px; }
+.lucky-intro { font-size:13px; color:#666; line-height:1.75; margin-bottom:18px; word-break:keep-all; }
+
+.btn-grid { display:grid; grid-template-columns:1fr 1fr; gap:9px; }
+.btn-action { height:50px; border-radius:12px; border:none; font-size:13px; font-weight:600; font-family:inherit; cursor:pointer; display:flex; align-items:center; justify-content:center; gap:5px; transition:opacity 0.2s, transform 0.1s; letter-spacing:-0.01em; }
+.btn-action:active { transform:scale(0.97); opacity:0.85; }
+.btn-item { background:#E84127; color:#fff; grid-column:span 2; height:54px; font-size:14px; border-radius:14px; }
+.btn-mall { background:#fff; border:1.5px solid #ddd; color:#333; }
+.btn-share { background:#fff; border:1.5px solid #ddd; color:#333; }
+.btn-save { grid-column:span 2; background:transparent; border:1px solid #e8e8e8; color:#aaa; height:42px; font-size:12px; font-weight:500; border-radius:10px; }
+.btn-restart { width:100%; height:44px; background:transparent; border:1px solid #e8e8e8; border-radius:12px; color:#bbb; font-size:13px; font-family:inherit; cursor:pointer; transition:color 0.2s, border-color 0.2s; margin-top:4px; }
+.btn-restart:hover { color:#888; border-color:#ccc; }
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- 인트로 -->
+  <div id="screen-intro">
+    <div class="logo-wrap">
+      <img src="hdf-logo.png" alt="현대면세점" onerror="this.style.display='none'">
+    </div>
+    <h1 class="intro-title">여행지 인연 찾기</h1>
+    <p class="intro-sub">이번 여행에서 만나게 될<br>인연을 보여드릴게요.</p>
+
+    <div class="form-group">
+      <label class="form-label">이름 (별명)</label>
+      <input class="form-input" type="text" id="input-name" placeholder="예) 김현대">
+    </div>
+    <div class="form-group">
+      <label class="form-label">생년월일</label>
+      <input class="form-input" type="text" id="input-birth" placeholder="예) 97.05.14" maxlength="8" inputmode="numeric">
+    </div>
+    <div class="form-group">
+      <label class="form-label">여행지</label>
+      <input class="form-input" type="text" id="input-dest" placeholder="예) 도쿄, 파리, 발리">
+    </div>
+    <div class="form-group">
+      <label class="form-label">원하는 인연 성별</label>
+      <div class="select-wrap">
+        <select class="form-select" id="input-gender">
+          <option value="">선택해주세요</option>
+          <option value="남성">남성</option>
+          <option value="여성">여성</option>
+          <option value="상관없음">상관없음</option>
+        </select>
+      </div>
+    </div>
+    <button class="btn-primary" onclick="startReading()">인연 보러가기 ✨</button>
+    <p class="error-msg" id="error-msg">모든 항목을 입력해주세요</p>
+  </div>
+
+  <!-- 로딩 -->
+  <div id="screen-loading">
+    <div class="loading-logo">
+      <img src="hdf-logo.png" alt="현대면세점" onerror="this.style.display='none'">
+    </div>
+    <p class="loading-text" id="loading-text">사주를 읽는 중...</p>
+    <div class="loading-dots">
+      <div class="dot"></div><div class="dot"></div><div class="dot"></div>
+    </div>
+  </div>
+
+  <!-- 결과 -->
+  <div id="screen-result">
+    <div class="result-hero">
+      <div class="img-placeholder" id="img-placeholder">
+        <div class="ph-logo"><img src="hdf-logo.png" alt="" onerror="this.style.display='none'"></div>
+        <p>인연 이미지 생성 중...</p>
+      </div>
+      <img id="result-img" alt="인연 이미지">
+      <div class="hero-overlay"></div>
+      <div class="hero-badge" id="hero-badge">여행지 인연</div>
+      <div class="hero-tagline" id="hero-tagline"></div>
+    </div>
+
+    <div class="result-body">
+      <div class="profile-card">
+        <div class="profile-name" id="profile-name"></div>
+        <div class="profile-meta" id="profile-meta"></div>
+        <div class="profile-tags" id="profile-tags"></div>
+        <div class="profile-quote" id="profile-quote"></div>
+      </div>
+      <div class="story-section">
+        <div class="section-eyebrow">운명의 서사</div>
+        <div class="story-text" id="story-text"></div>
+      </div>
+      <div class="lucky-section">
+        <div class="section-eyebrow">행운의 힌트</div>
+        <p class="lucky-intro">이 인연, 그냥 스쳐 지나가게 두기 아쉬운데요. 운명을 조금 더 내 편으로 만들고 싶다면, 이 팁을 꼭 챙겨가세요.</p>
+        <div class="btn-grid">
+          <button class="btn-action btn-item" onclick="openLink(itemUrl)">🛍️ <span id="btn-item-text">취향 저격 아이템 보기</span></button>
+          <button class="btn-action btn-mall" onclick="openLink('https://www.hddfs.com')">🏪 현대면세점 가기</button>
+          <button class="btn-action btn-share" onclick="shareResult()">🔗 공유하기</button>
+          <button class="btn-action btn-save" onclick="saveImage()">⬇️ 이미지 저장</button>
+        </div>
+      </div>
+      <button class="btn-restart" onclick="restart()">↩ 다시 보기</button>
+    </div>
+  </div>
+
+</div>
+<script>
+// 생년월일 자동 포맷 (숫자만 입력하면 .. 자동 삽입)
+document.getElementById('input-birth').addEventListener('input', function(e) {
+  let v = this.value.replace(/\D/g, '').slice(0, 6);
+  if (v.length > 4) v = v.slice(0,2) + '.' + v.slice(2,4) + '.' + v.slice(4);
+  else if (v.length > 2) v = v.slice(0,2) + '.' + v.slice(2);
+  this.value = v;
+});
+document.getElementById('input-birth').addEventListener('keydown', function(e) {
+  if (e.key === 'Backspace') {
+    let v = this.value;
+    if (v.endsWith('.')) { this.value = v.slice(0, -2); e.preventDefault(); }
+  }
+});
+
+const SYSTEM_PROMPT = `너는 '현대면세점 여행자 인연 미리보기' 소속 AI 점술사다.
+
+## [입력 필터링]
+욕설·혐오·성적 표현·무관한 질문 시 고정 응답: "현대면세점 여행자 인연 미리보기는 여행 인연 찾기만 도와드릴 수 있어요."
+
+## [인연 등급] 96.7% 일반 / 3.3% 코믹
+코믹 아키타입 랜덤: 짠돌이형/과몰입덕후형/마마보이형/과시형/건강염려증형/전얘기형
+코믹 시 마지막: "…운명도 가끔은 장난을 칩니다."
+
+## [인연 생성]
+인종 (매번 랜덤, 직전과 연속 불가): 동아시아계/동남아시아계/남아시아계/백인/흑인/라틴계/중동계/혼혈
+아키타입 랜덤: 너드형/섹시형/쿨형/터프형/미남형/꾸미는형/소년형/감성형
+말투 랜덤: 무심형/직진형/장난형/감성형/4차원형
+카테고리 랜덤 (서사 전체에서 이 소품만): 향수/패션·잡화/스포츠·레저/전자·리빙/주류
+
+## [출력 — 반드시 JSON만. 마크다운 코드블록 금지]
+{
+  "tagline": "핵심 문장 15자 이내",
+  "name": "배정 인종/국적에 맞는 현지 이름",
+  "nationality": "국적",
+  "job": "직업",
+  "personality": ["성격1","성격2","성격3"],
+  "style": "스타일 유형",
+  "quote": "한마디 대사 — 연애 시뮬 캐릭터처럼, 말투 유형 반영, 매번 완전히 다른 표현",
+  "story": [
+    "서사1: 첫 만남. 오글거림 최대치. 심장이 쿵 내려앉는 도입부.",
+    "서사2: 구체적 장면. 여행지 분위기 생생하게. 배경이 눈앞에 그려지게.",
+    "서사3: 카테고리 소품 자연스럽게 등장. 첫 대화 시작.",
+    "서사4: 감정 클라이맥스. 세상이 멈춘 것 같은 순간. 가장 강렬하게.",
+    "서사5: 여운 있는 마무리. 독자가 그 자리에 있는 것처럼."
+  ],
+  "category": "향수|패션·잡화|스포츠·레저|전자·리빙|주류 중 택1",
+  "imagePrompt": "ultra realistic photorealistic portrait, 85mm lens, upper body, [배정 인종 외모 상세], extremely attractive globally, clear skin, [아키타입 스타일], [여행지 대표 배경], natural lighting, magazine quality, no text no overlay",
+  "isComic": false
+}`;
+
+const API_KEY = ''; // Vercel 환경변수로 관리 — 개발자가 서버사이드로 처리
+const LINKS = {
+  '향수':'https://www.hddfs.com/shop/dm/best/monthly.do?goosCtgId=0003',
+  '패션·잡화':'https://www.hddfs.com/shop/dm/best/monthly.do?goosCtgId=0007',
+  '스포츠·레저':'https://www.hddfs.com/shop/dm/best/monthly.do?goosCtgId=0013',
+  '전자·리빙':'https://www.hddfs.com/shop/dm/best/monthly.do?goosCtgId=0008',
+  '주류':'https://www.hddfs.com/shop/dm/best/monthly.do?goosCtgId=0014'
+};
+const LOADING_MSGS = ['눈코입을 만드는 중...','여행지 버프 생성 중...','첫만남 로맨틱 한스푼 추가 중...','눈빛 조율 중...'];
+let itemUrl = '', loadingInterval = null;
+
+function startMsgs() {
+  let i=0; const el=document.getElementById('loading-text'); el.textContent=LOADING_MSGS[0];
+  loadingInterval = setInterval(()=>{ i=(i+1)%LOADING_MSGS.length; el.style.opacity='0'; setTimeout(()=>{el.textContent=LOADING_MSGS[i];el.style.opacity='1';},400); },2000);
+}
+function stopMsgs() { if(loadingInterval){clearInterval(loadingInterval);loadingInterval=null;} }
+
+function showScreen(id) {
+  ['screen-intro','screen-loading','screen-result'].forEach(s=>{
+    document.getElementById(s).style.display='none';
+  });
+  const t=document.getElementById(id); t.style.display='flex'; t.style.flexDirection='column';
+}
+
+async function startReading() {
+  const name=document.getElementById('input-name').value.trim();
+  const birth=document.getElementById('input-birth').value.trim();
+  const dest=document.getElementById('input-dest').value.trim();
+  const gender=document.getElementById('input-gender').value;
+  const err=document.getElementById('error-msg');
+  if(!name||!birth||!dest||!gender){err.style.display='block';return;}
+  err.style.display='none';
+  showScreen('screen-loading'); startMsgs();
+  try {
+    const res = await fetch('https://api.anthropic.com/v1/messages',{
+      method:'POST', headers:{'Content-Type':'application/json','x-api-key': API_KEY,'anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
+      body: JSON.stringify({ model:'claude-sonnet-4-6', max_tokens:1000, system:SYSTEM_PROMPT,
+        messages:[{role:'user',content:`이름: ${name}, 생년월일: ${birth}, 여행지: ${dest}, 원하는 인연 성별: ${gender}`}]
+      })
+    });
+    const data = await res.json();
+    const raw = data.content?.[0]?.text||'';
+    const result = JSON.parse(raw.replace(/```json|```/g,'').trim());
+    stopMsgs(); renderResult(result, dest);
+  } catch(e) {
+    stopMsgs(); showScreen('screen-intro');
+    const err=document.getElementById('error-msg');
+    err.textContent='오류가 발생했어요. 다시 시도해주세요.'; err.style.display='block';
+  }
+}
+
+function renderResult(r, dest) {
+  document.getElementById('hero-badge').textContent = dest+' 인연';
+  document.getElementById('hero-tagline').textContent = r.tagline||'';
+  document.getElementById('profile-name').textContent = r.name||'';
+  document.getElementById('profile-meta').textContent = [r.nationality,r.job].filter(Boolean).join(' · ');
+  const tags=document.getElementById('profile-tags'); tags.innerHTML='';
+  [...(r.personality||[]),r.style].filter(Boolean).forEach(t=>{
+    const s=document.createElement('span'); s.className='profile-tag'; s.textContent=t; tags.appendChild(s);
+  });
+  document.getElementById('profile-quote').textContent = r.quote?`"${r.quote}"`:'';
+  const story=document.getElementById('story-text'); story.innerHTML='';
+  (r.story||[]).forEach((s,i)=>{
+    const p=document.createElement('p');
+    if(i===3) p.innerHTML=`<span class="story-highlight">${s}</span>`;
+    else p.textContent=s;
+    story.appendChild(p);
+  });
+  if(r.isComic){const p=document.createElement('p');p.style.cssText='color:#bbb;font-style:italic;margin-top:8px;';p.textContent='…운명도 가끔은 장난을 칩니다.';story.appendChild(p);}
+  itemUrl=LINKS[r.category]||'https://www.hddfs.com';
+  document.getElementById('btn-item-text').textContent=(r.name||'인연')+'의 취향 아이템 보기';
+  document.getElementById('img-placeholder').style.display='flex';
+  document.getElementById('result-img').style.display='none';
+  showScreen('screen-result');
+}
+
+function openLink(url){if(url)window.open(url,'_blank');}
+function shareResult(){
+  const url=window.location.href;
+  if(navigator.share)navigator.share({title:'여행지 인연 찾기',text:'내 여행지 인연을 확인해봤어요 🔮',url});
+  else if(navigator.clipboard)navigator.clipboard.writeText(url).then(()=>alert('링크가 복사됐어요!'));
+  else alert('링크: '+url);
+}
+function saveImage(){
+  const img=document.getElementById('result-img');
+  if(img&&img.src&&img.style.display!=='none'){const a=document.createElement('a');a.href=img.src;a.download='나의_여행지_인연.jpg';a.click();}
+  else alert('이미지 저장은 이미지가 생성된 후 가능해요 🙏');
+}
+function restart(){
+  showScreen('screen-intro');
+  ['input-name','input-birth','input-dest'].forEach(id=>document.getElementById(id).value='');
+  document.getElementById('input-gender').value='';
+  document.getElementById('error-msg').style.display='none';
+}
+</script>
+</body>
+</html>
