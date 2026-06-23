@@ -279,14 +279,14 @@ async function startReading() {
   err.style.display='none';
   showScreen('screen-loading'); startMsgs();
   try {
-    const res = await fetch('https://api.anthropic.com/v1/messages',{
-      method:'POST', headers:{'Content-Type':'application/json','x-api-key':'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','anthropic-version':'2023-06-01','anthropic-dangerous-direct-browser-access':'true'},
-      body: JSON.stringify({ model:'claude-sonnet-4-6', max_tokens:1000, system:SYSTEM_PROMPT,
-        messages:[{role:'user',content:`이름: ${name}, 생년월일: ${birth}, 여행지: ${dest}, 원하는 인연 성별: ${gender}`}]
+    const res = await fetch('https://api.openai.com/v1/chat/completions',{
+      method:'POST', headers:{'Content-Type':'application/json','Authorization':'Bearer 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'},
+      body: JSON.stringify({ model:'gpt-4o', max_tokens:1000,
+        messages:[{role:'system',content:SYSTEM_PROMPT},{role:'user',content:`이름: ${name}, 생년월일: ${birth}, 여행지: ${dest}, 원하는 인연 성별: ${gender}`}]
       })
     });
     const data = await res.json();
-    const raw = data.content?.[0]?.text||'';
+    const raw = data.choices?.[0]?.message?.content||'';
     const result = JSON.parse(raw.replace(/```json|```/g,'').trim());
     stopMsgs(); renderResult(result, dest);
   } catch(e) {
