@@ -1,5 +1,5 @@
 import https from 'node:https';
-import { SYSTEM_PROMPT, CATEGORIES, buildGenerationContext, buildUserMessage, buildImagePrompt } from './prompts.js';
+import { SYSTEM_PROMPT, CATEGORIES, buildGenerationContext, buildUserMessage, buildImagePrompt, enforceImagePromptSafety } from './prompts.js';
 
 // --- 서버 고정 상수 (클라이언트가 변경 불가) ---
 const TEXT_MODEL = 'gpt-4o';
@@ -9,7 +9,15 @@ const IMAGE_SIZE = '1024x1024';
 const IMAGE_QUALITY = 'medium';
 const ALLOWED_GENDERS = ['남성', '여성'];
 const CATEGORY_NAMES = CATEGORIES.map((category) => category.ko);
-const DEFAULT_ALLOWED_ORIGINS = ['http://localhost:5173', 'https://hyundai-dutyfree.vercel.app'];
+const DEFAULT_ALLOWED_ORIGINS = [
+  'http://localhost:5173',
+  'https://hyundai-dutyfree.vercel.app',
+  'https://hddfs.com',
+  'https://www.hddfs.com',
+  'https://en.hddfs.com',
+  'https://men.hddfs.com',
+  'https://m.hddfs.com',
+];
 
 // 유료 API 호출 전에 입력을 검증한다. 통과 못 하면 비용 발생 없이 400.
 function validateFields(body) {
@@ -74,11 +82,29 @@ function normalizeArray(value, limit) {
   return [];
 }
 
+const UNSAFE_RESULT_TEXT = /섹시|관능|도발|야한|노출|가슴|글래머/i;
+const SAFE_PERSONALITY_FALLBACKS = ['다정함', '여유로움', '센스있음'];
+
+function sanitizeResultText(value, fallback = '') {
+  const normalized = normalizeString(value, fallback);
+  if (!normalized || UNSAFE_RESULT_TEXT.test(normalized)) return fallback;
+  return normalized;
+}
+
+function normalizePersonality(value) {
+  const safe = normalizeArray(value, 3).filter((item) => !UNSAFE_RESULT_TEXT.test(item));
+  for (const fallback of SAFE_PERSONALITY_FALLBACKS) {
+    if (safe.length >= 3) break;
+    if (!safe.includes(fallback)) safe.push(fallback);
+  }
+  return safe.slice(0, 3);
+}
+
 function normalizeResult(raw, fields, generationContext) {
   const category = CATEGORY_NAMES.includes(raw?.category) ? raw.category : generationContext.category.ko;
   const fallbackImagePrompt = buildImagePrompt({ ...fields, generationContext });
-  const imagePrompt = normalizeString(raw?.imagePrompt, fallbackImagePrompt).slice(0, 2200);
-  const personality = normalizeArray(raw?.personality, 3);
+  const imagePrompt = enforceImagePromptSafety(normalizeString(raw?.imagePrompt, fallbackImagePrompt), fields).slice(0, 2200);
+  const personality = normalizePersonality(raw?.personality);
   const story = normalizeArray(raw?.story, 7);
 
   return {
@@ -87,7 +113,7 @@ function normalizeResult(raw, fields, generationContext) {
     nationality: normalizeString(raw?.nationality, `${fields.destination}의 여행자`),
     job: normalizeString(raw?.job, '여행자'),
     personality,
-    style: normalizeString(raw?.style, generationContext.archetype),
+    style: sanitizeResultText(raw?.style, generationContext.archetype),
     quote: normalizeString(raw?.quote, '오늘은 그냥 지나치지 말아요.'),
     story,
     category,
@@ -102,9 +128,9 @@ export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
 
   // Origin 화이트리스트: 브라우저 XHR/fetch는 아래 Origin에서 온 요청만 허용한다.
-  // ALLOWED_ORIGIN(쉼표구분) 설정 시 그 목록을 사용하고, 미설정 시 기본 2개만 허용한다.
+  // ALLOWED_ORIGIN(쉼표구분) 설정 시 기본 Origin에 추가로 병합한다.
   const configuredOrigins = (process.env.ALLOWED_ORIGIN || '').split(',').map((s) => s.trim()).filter(Boolean);
-  const allowed = configuredOrigins.length ? configuredOrigins : DEFAULT_ALLOWED_ORIGINS;
+  const allowed = [...new Set([...DEFAULT_ALLOWED_ORIGINS, ...configuredOrigins])];
   const origin = req.headers.origin;
   if (!origin || !allowed.includes(origin)) {
     res.status(403).json({ error: 'FORBIDDEN_ORIGIN' });
@@ -198,9 +224,12 @@ export default async function handler(req, res) {
     }
     const generationContext = buildGenerationContext(fields);
     const suppliedPrompt = typeof body.imagePrompt === 'string' ? body.imagePrompt.trim() : '';
-    const imagePrompt = suppliedPrompt && suppliedPrompt.length <= 2200
-      ? suppliedPrompt
-      : buildImagePrompt({ ...fields, generationContext });
+    const imagePrompt = enforceImagePromptSafety(
+      suppliedPrompt && suppliedPrompt.length <= 2200
+        ? suppliedPrompt
+        : buildImagePrompt({ ...fields, generationContext }),
+      fields,
+    );
     const imagePayload = { model: IMAGE_MODEL, prompt: imagePrompt, n: 1, size: IMAGE_SIZE, quality: IMAGE_QUALITY };
 
     let openaiResult = null;

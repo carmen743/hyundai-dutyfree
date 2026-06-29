@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef } from 'react';
+import { toBlob } from 'html-to-image';
 import { callAPI } from './api.js';
 
 const EMPTY_FORM = { name: '', birth: '', destination: '', gender: '' };
@@ -22,6 +23,15 @@ const LOADING_MESSAGES = [
 
 function LogoMark({ small = false }) {
   return <img className={small ? 'logo logo-small' : 'logo'} src="/logo.png" alt="현대면세점" />;
+}
+
+function BrandWordmark() {
+  return (
+    <span className="brand-wordmark" aria-label="HYUNDAI DUTY FREE">
+      <span>HYUNDAI</span>
+      <strong>DUTY FREE</strong>
+    </span>
+  );
 }
 
 function formatBirth(value) {
@@ -139,6 +149,7 @@ export default function App() {
   const [globalError, setGlobalError] = useState(false);
   const [formError, setFormError] = useState('');
   const [toast, setToast] = useState('');
+  const resultCaptureRef = useRef(null);
 
   const isBusy = loading || imageLoading;
   const loadingMessage = LOADING_MESSAGES[loadingMessageIndex % LOADING_MESSAGES.length];
@@ -241,22 +252,65 @@ export default function App() {
     setToast('');
   }
 
-  async function handleShare() {
+  function getEventShareUrl() {
+    return globalThis.HDDFS_EVENT_URL || import.meta.env.VITE_EVENT_SHARE_URL || window.location.href;
+  }
+
+  async function copyShareUrl(url, message = '링크가 복사되었어요!') {
+    await navigator.clipboard.writeText(url);
+    setToast(message);
+    setTimeout(() => setToast(''), 2500);
+  }
+
+  async function shareNativeOrCopy(shareData, fallbackMessage) {
+    if (navigator.share) {
+      await navigator.share(shareData);
+    } else {
+      await copyShareUrl(shareData.url, fallbackMessage);
+    }
+  }
+
+  async function handleResultShare() {
+    const shareUrl = window.location.href;
     const shareData = {
-      title: `${FULL_TITLE} 🔮`,
+      title: `${form.name || '나'}님의 여행지 인연`,
       text: resultData?.name
         ? `${form.destination}에서 만날 ${resultData.name}와의 인연을 확인해보세요!`
         : '이번 여행에서 만날 인연을 미리 확인해보세요!',
-      url: window.location.href,
+      url: shareUrl,
+    };
+
+    try {
+      let imageFile = null;
+      if (resultCaptureRef.current) {
+        const blob = await toBlob(resultCaptureRef.current, {
+          backgroundColor: '#ffffff',
+          cacheBust: true,
+          pixelRatio: Math.min(2, window.devicePixelRatio || 1),
+        });
+        if (blob) imageFile = new File([blob], 'hyundai-dutyfree-result.png', { type: 'image/png' });
+      }
+
+      if (imageFile && navigator.canShare?.({ files: [imageFile] })) {
+        await navigator.share({ ...shareData, files: [imageFile] });
+        return;
+      }
+
+      await shareNativeOrCopy(shareData, '결과 링크가 복사되었어요!');
+    } catch {
+      /* 사용자 취소 등은 무시 */
+    }
+  }
+
+  async function handleTestShare() {
+    const shareUrl = getEventShareUrl();
+    const shareData = {
+      title: FULL_TITLE,
+      text: '여행지에서 만날 인연과 행운의 아이템을 확인해보세요!',
+      url: shareUrl,
     };
     try {
-      if (navigator.share) {
-        await navigator.share(shareData);
-      } else {
-        await navigator.clipboard.writeText(window.location.href);
-        setToast('링크가 복사되었어요!');
-        setTimeout(() => setToast(''), 2500);
-      }
+      await shareNativeOrCopy(shareData, '테스트 링크가 복사되었어요!');
     } catch {
       /* 사용자 취소 등은 무시 */
     }
@@ -317,39 +371,42 @@ export default function App() {
 
       {view === 'result' && resultData && (
         <section className="result-page">
-          <div className="image-stage">
-            {imageSrc ? (
-              <img className="result-image" src={imageSrc} alt={`${form.destination}에서 만날 인연의 모습`} />
-            ) : (
-              <div className="image-placeholder" role={imageLoading ? 'status' : undefined} aria-live={imageLoading ? 'polite' : undefined} aria-busy={imageLoading || undefined}>
-                <LogoMark small />
-                <p key={loadingMessage} className="loading-message image-message">
-                  {imageLoading ? loadingMessage : '이미지 생성이 지연되어 텍스트 결과 먼저 보여드려요.'}
-                </p>
-                <span>Image area</span>
-              </div>
-            )}
-            <div className="image-badge">{form.destination} 인연</div>
-            <div className="image-tagline">{resultData.tagline}</div>
-          </div>
+          <div className="result-share-sheet" ref={resultCaptureRef}>
+            <h1 className="result-heading"><span>{form.name || 'OO'}님의</span> 여행지 인연</h1>
 
-          {imageError && <p className="image-note">이미지 없이 결과를 먼저 보여드릴게요.</p>}
-
-          <article className="profile-card">
-            <div className="profile-topline">{resultData.nationality} · {resultData.job}</div>
-            <h2>{resultData.name}</h2>
-            <div className="tag-row" aria-label="성격 태그">
-              {resultData.personality.map((tag) => <span key={tag} className="tag">{tag}</span>)}
-              <span className="tag tag-style">{resultData.style}</span>
+            <div className="image-stage">
+              {imageSrc ? (
+                <img className="result-image" src={imageSrc} alt={`${form.destination}에서 만날 인연의 모습`} />
+              ) : (
+                <div className="image-placeholder" role={imageLoading ? 'status' : undefined} aria-live={imageLoading ? 'polite' : undefined} aria-busy={imageLoading || undefined}>
+                  <LogoMark small />
+                  <p key={loadingMessage} className="loading-message image-message">
+                    {imageLoading ? loadingMessage : '이미지 생성이 지연되어 텍스트 결과 먼저 보여드려요.'}
+                  </p>
+                  <span>Image area</span>
+                </div>
+              )}
+              <div className="image-brand-strip"><BrandWordmark /></div>
             </div>
-            <blockquote>{resultData.quote}</blockquote>
-          </article>
 
-          <article className="story-card">
-            {resultData.story.map((paragraph, index) => (
-              <p key={`${paragraph}-${index}`} className={index === 2 ? 'story-highlight' : undefined}>{paragraph}</p>
-            ))}
-          </article>
+            {imageError && <p className="image-note">이미지 없이 결과를 먼저 보여드릴게요.</p>}
+
+            <article className="profile-card">
+              <div className="profile-topline">{resultData.nationality} · {resultData.job}</div>
+              <h2>{resultData.name}</h2>
+              <div className="tag-row" aria-label="성격 태그">
+                {resultData.personality.map((tag) => <span key={tag} className="tag">{tag}</span>)}
+                <span className="tag tag-style">{resultData.style}</span>
+              </div>
+              <blockquote>{resultData.quote}</blockquote>
+            </article>
+
+            <article className="story-card">
+              {resultData.story.map((paragraph, index) => (
+                <p key={`${paragraph}-${index}`} className={index === 2 ? 'story-highlight' : undefined}>{paragraph}</p>
+              ))}
+            </article>
+          </div>
 
           <div className="bottom-actions">
             <a className="primary-action" href={itemLink} target="_blank" rel="noopener noreferrer nofollow">
@@ -358,8 +415,11 @@ export default function App() {
             <a className="secondary-action" href={DUTYFREE_LINK} target="_blank" rel="noopener noreferrer nofollow">
               🏪 현대면세점 보러가기
             </a>
-            <button className="secondary-action" type="button" onClick={handleShare}>
-              🔗 공유하기
+            <button className="share-action" type="button" onClick={handleResultShare}>
+              결과지 공유하기
+            </button>
+            <button className="share-action" type="button" onClick={handleTestShare}>
+              테스트 공유하기
             </button>
           </div>
           {toast && <div className="toast" role="status">{toast}</div>}

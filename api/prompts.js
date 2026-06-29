@@ -43,8 +43,32 @@ const ETHNICITY_GROUPS = [
   },
 ];
 
-const ARCHETYPES = ['너드형', '섹시형', '쿨형', '터프형', '미남형', '꾸미는형', '소년형', '감성형'];
-const COMIC_TYPES = ['짠돌이형', '과몰입 덕후형', '마마보이형', '과시형', '건강염려증형', '전 얘기형'];
+const ETHNICITY_PICK_POOL = [
+  'east-asian',
+  'east-asian',
+  'east-asian',
+  'southeast-asian',
+  'south-asian',
+  'european',
+  'black-african',
+  'latine',
+  'middle-eastern',
+  'mixed',
+].map((id) => ETHNICITY_GROUPS.find((group) => group.id === id));
+
+const ARCHETYPES = ['너드형', '쿨형', '터프형', '미남형', '꾸미는형', '소년형', '감성형', '청량형', '우아형'];
+const ARCHETYPE_IMAGE_VIBES = {
+  너드형: 'smart and gentle charm',
+  쿨형: 'calm and effortlessly stylish charm',
+  터프형: 'confident outdoor traveler charm',
+  미남형: 'classic handsome charm',
+  꾸미는형: 'well-groomed fashion-conscious charm',
+  소년형: 'fresh youthful charm',
+  감성형: 'warm artistic charm',
+  청량형: 'bright refreshing charm',
+  우아형: 'elegant refined charm',
+};
+const COMIC_TYPES = [''];
 const TONES = ['무심형', '직진형', '장난형', '감성형', '4차원형'];
 const CAMERA_ANGLES = [
   'front-facing portrait angle',
@@ -97,13 +121,12 @@ function pickBySeed(list, seed, salt) {
 export function buildGenerationContext({ name, birth, destination, gender, resultSeed = '' }, options = {}) {
   const seed = `${resultSeed || 'no-seed'}|${name}|${birth}|${destination}|${gender}`;
   const previousEthnicity = options.previousEthnicity || '';
-  const ethnicityCandidates = ETHNICITY_GROUPS.filter((group) => group.id !== previousEthnicity && group.ko !== previousEthnicity);
-  const comicRoll = hashString(`${seed}|comic-roll`) % 1000;
+  const ethnicityCandidates = ETHNICITY_PICK_POOL.filter((group) => group && group.id !== previousEthnicity && group.ko !== previousEthnicity);
   return {
-    ethnicity: pickBySeed(ethnicityCandidates.length ? ethnicityCandidates : ETHNICITY_GROUPS, seed, 'ethnicity'),
+    ethnicity: pickBySeed(ethnicityCandidates.length ? ethnicityCandidates : ETHNICITY_PICK_POOL, seed, 'ethnicity'),
     archetype: pickBySeed(ARCHETYPES, seed, 'archetype'),
-    isComic: comicRoll < 33,
-    comicType: pickBySeed(COMIC_TYPES, seed, 'comic-type'),
+    isComic: false,
+    comicType: '',
     tone: pickBySeed(TONES, seed, 'tone'),
     category: pickBySeed(CATEGORIES, seed, 'category'),
     cameraAngle: pickBySeed(CAMERA_ANGLES, seed, 'camera-angle'),
@@ -173,30 +196,43 @@ export const SYSTEM_PROMPT = `너는 '현대면세점 여행자 인연 미리보
 - 현대면세점 언급은 인천공항 면세점 쇼핑 장소, 여행 전 면세 쇼핑, 행운의 아이템 연결 맥락으로만 제한한다.
 - 구체적인 가격, 할인율, 프로모션 세부 조건, 특정 브랜드 추천, 타 면세점 언급, 현대면세점 평가 금지.
 
-[코믹 인연]
-- 서버가 전달한 인연 등급이 코믹이면 isComic은 true.
-- 외모부터 성격까지 코믹하게 연출하되 불쾌하거나 혐오적으로 쓰지 않는다.
-- 한마디는 설레는 척 시작하다 끝에서 본색이 드러나는 구조.
-- story 마지막 문단 끝에 반드시 "…운명도 가끔은 장난을 칩니다."를 포함한다.
-- 일반 인연이면 isComic은 false이고 매력적이고 설레는 톤으로 쓴다.
+[인연 표현 안전 규칙]
+- 현재 버전은 코믹/못생김/평균외모 분기를 사용하지 않는다. isComic은 항상 false로 응답한다.
+- style과 personality에는 "섹시형", "관능형", "도발형"처럼 성적 매력을 전면에 둔 유형을 절대 쓰지 않는다.
+- 외모 평가는 모욕적이거나 품평처럼 쓰지 말고, 자연스럽고 호감 가는 분위기 중심으로 쓴다.
 
 [이미지 프롬프트]
 - imagePrompt는 영어로 작성한다.
 - ultra realistic photorealistic, 85mm portrait, upper body, face large and sharp, travel destination background clearly recognizable 조건을 포함한다.
 - 배정 인종에 맞는 얼굴 특징(피부톤·눈매·골격·헤어 텍스처 등)을 자연스럽고 사실적으로 반영한다.
 - 카메라 구도는 서버가 전달한 구도를 따른다.
-- 일반 인연은 extremely attractive, globally attractive, clear skin, natural actor/influencer 느낌.
-- 코믹 인연은 average looking, awkward style, slightly odd expression, distinctive personality를 반영한다.
+- 모든 인물은 respectful, photogenic, pleasant, natural actor/influencer 느낌으로 만든다. 과장되게 성적이거나 노출이 많은 분위기 금지.
+- 여성 인물은 단정하고 세련된 여행 복장, 가슴골·란제리·수영복·깊게 파인 상의·선정적 포즈 금지.
+- 남성 인물은 대부분 깔끔한 면도 또는 아주 옅은 수염까지만 허용하고, 짙은 턱수염·긴 수염 빈도를 낮춘다.
 - 이미지 위 텍스트·UI 오버레이 절대 금지.`;
+
+const IMAGE_SAFETY_SUFFIX = 'Respectful non-sexualized portrait. Modest stylish travel outfit. No cleavage, no lingerie, no swimwear, no deep neckline, no sexualized pose, no erotic styling, no text, no UI, no card layout, no graphics, no subtitle, no watermark, no logo, no illustration, no cartoon, no duplicated faces, no distorted hands, fictional person not resembling any real person.';
+
+export function enforceImagePromptSafety(prompt, { gender } = {}) {
+  const base = String(prompt || '')
+    .replace(/\b(sexy|seductive|sensual|erotic|provocative|cleavage|lingerie|bikini|swimsuit|revealing|deep neckline)\b/gi, 'modestly dressed')
+    .replace(/\b(ugly|awkward|average looking)\b/gi, 'photogenic')
+    .replace(/\b(heavy|thick|full|long)\s+beard\b/gi, 'clean-shaven or very light stubble')
+    .slice(0, 1700)
+    .trim();
+  const genderGuard = gender === '남성'
+    ? 'For a male subject, prefer clean-shaven or very light stubble, no heavy beard, no long beard.'
+    : 'For a female subject, keep clothing elegant and modest, neckline covered, no visible cleavage.';
+  return `${base}. ${genderGuard} ${IMAGE_SAFETY_SUFFIX}`.slice(0, 2200);
+}
 
 export function buildImagePrompt({ destination, gender, generationContext }) {
   const ctx = generationContext || buildGenerationContext({ name: '', birth: '', destination, gender });
   const genderEn = gender === '남성' ? 'man' : 'woman';
-  const attractiveness = ctx.isComic
-    ? `average looking fictional ${genderEn}, awkward style, slightly odd but harmless expression, visually comedic and distinctive rather than conventionally attractive, ${ctx.comicType} vibe`
-    : `extremely attractive fictional ${genderEn} in their late 20s, globally attractive, natural actor or influencer presence, ${ctx.archetype} vibe`;
+  const imageVibe = ARCHETYPE_IMAGE_VIBES[ctx.archetype] || 'warm travel romance charm';
+  const portraitDirection = `appealing photogenic fictional ${genderEn} in their late 20s, respectful and non-sexualized, natural actor or influencer presence, ${imageVibe}`;
 
-  return `A single ultra realistic photorealistic upper-body portrait of a ${attractiveness}. ${ctx.ethnicity.image}. ${ctx.cameraAngle}. 85mm portrait lens, face large and sharp, clear skin, realistic facial symmetry, stylish casual travel outfit, soft cinematic lighting, magazine editorial photography quality. The background must clearly show iconic ${destination} scenery and atmosphere, immediately recognizable as ${destination}, not a generic street or blurred anonymous background. Pure person plus travel destination background only. No text, no UI, no card layout, no graphics, no subtitle, no watermark, no logo, no illustration, no cartoon, no duplicated faces, no distorted hands, fictional person not resembling any real person.`;
+  return enforceImagePromptSafety(`A single ultra realistic photorealistic upper-body portrait of a ${portraitDirection}. ${ctx.ethnicity.image}. ${ctx.cameraAngle}. 85mm portrait lens, face large and sharp, clear skin, realistic facial symmetry, stylish casual travel outfit, soft cinematic lighting, magazine editorial photography quality. The background must clearly show iconic ${destination} scenery and atmosphere, immediately recognizable as ${destination}, not a generic street or blurred anonymous background. Pure person plus travel destination background only.`, { gender });
 }
 
 export function buildUserMessage({ name, birth, destination, gender, generationContext }) {
