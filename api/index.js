@@ -129,9 +129,8 @@ export default async function handler(req, res) {
   }
 
   const openaiKey = process.env.OPENAI_API_KEY;
-  const stabilityKey = process.env.STABILITY_API_KEY;
 
-  // JSON API 호출. timeoutMs 지정 시 무응답 타임아웃 → 폴백/실패 트리거
+  // JSON API 호출. timeoutMs 지정 시 무응답 타임아웃 → 실패 트리거
   const makeJsonRequest = (hostname, path, payload, apiKey, timeoutMs) => {
     return new Promise((resolve, reject) => {
       const data = JSON.stringify(payload);
@@ -158,38 +157,6 @@ export default async function handler(req, res) {
       if (timeoutMs) request.on('timeout', () => request.destroy(new Error('upstream timeout')));
       request.on('error', reject);
       request.write(data);
-      request.end();
-    });
-  };
-
-  // Stability AI 이미지 생성 (multipart/form-data) → { image, finish_reason, seed }
-  const makeStabilityRequest = (prompt, apiKey, timeoutMs) => {
-    return new Promise((resolve, reject) => {
-      const formData = `--boundary\r\nContent-Disposition: form-data; name="prompt"\r\n\r\n${prompt}\r\n--boundary\r\nContent-Disposition: form-data; name="output_format"\r\n\r\npng\r\n--boundary--`;
-      const options = {
-        hostname: 'api.stability.ai',
-        path: '/v2beta/stable-image/generate/core',
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${apiKey}`,
-          'Accept': 'application/json',
-          'Content-Type': 'multipart/form-data; boundary=boundary',
-          'Content-Length': Buffer.byteLength(formData),
-        },
-      };
-      if (timeoutMs) options.timeout = timeoutMs;
-      const request = https.request(options, (response) => {
-        response.setEncoding('utf8');
-        let result = '';
-        response.on('data', (chunk) => (result += chunk));
-        response.on('end', () => {
-          try { resolve(JSON.parse(result)); }
-          catch (e) { reject(new Error('stability parse error')); }
-        });
-      });
-      if (timeoutMs) request.on('timeout', () => request.destroy(new Error('stability timeout')));
-      request.on('error', reject);
-      request.write(formData);
       request.end();
     });
   };
@@ -249,23 +216,7 @@ export default async function handler(req, res) {
       return;
     }
     console.error('[api/image] openai failed:', openaiErr || JSON.stringify(openaiResult?.error || openaiResult).slice(0, 500));
-
-    if (!stabilityKey) {
-      res.status(502).json({ error: 'IMAGE_GENERATION_FAILED' });
-      return;
-    }
-    try {
-      const stab = await makeStabilityRequest(imagePrompt, stabilityKey, 18000);
-      if (stab?.image) {
-        res.status(200).json({ image: stab.image, provider: 'stability' });
-        return;
-      }
-      console.error('[api/image] stability failed:', JSON.stringify(stab).slice(0, 500));
-      res.status(502).json({ error: 'IMAGE_GENERATION_FAILED' });
-    } catch (e) {
-      console.error('[api/image] stability error:', e.message);
-      res.status(502).json({ error: 'IMAGE_GENERATION_FAILED' });
-    }
+    res.status(502).json({ error: 'IMAGE_GENERATION_FAILED' });
   } catch (e) {
     console.error('[api] internal error:', e.message);
     res.status(500).json({ error: 'INTERNAL_ERROR' });
