@@ -1,7 +1,8 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { callAPI } from './api.js';
 
 const EMPTY_FORM = { name: '', birth: '', destination: '', gender: '' };
+const GENDER_OPTIONS = ['남성', '여성'];
 const APP_TITLE = '여행지 인연 미리보기';
 const FULL_TITLE = '현대면세점 여행자 인연 미리보기';
 const DUTYFREE_LINK = 'https://www.hddfs.com/';
@@ -48,6 +49,84 @@ function normalizeGeneratedResult(result, form) {
   };
 }
 
+function GenderDropdown({ value, onChange }) {
+  const [open, setOpen] = useState(false);
+  const dropdownRef = useRef(null);
+  const triggerRef = useRef(null);
+  const selectedText = value || '선택해주세요';
+
+  useEffect(() => {
+    if (!open) return undefined;
+
+    function handlePointerDown(e) {
+      if (!dropdownRef.current?.contains(e.target)) setOpen(false);
+    }
+
+    function handleKeyDown(e) {
+      if (e.key !== 'Escape') return;
+      setOpen(false);
+      triggerRef.current?.focus();
+    }
+
+    document.addEventListener('pointerdown', handlePointerDown);
+    document.addEventListener('keydown', handleKeyDown);
+    return () => {
+      document.removeEventListener('pointerdown', handlePointerDown);
+      document.removeEventListener('keydown', handleKeyDown);
+    };
+  }, [open]);
+
+  function choose(nextValue) {
+    onChange(nextValue);
+    setOpen(false);
+    triggerRef.current?.focus();
+  }
+
+  function handleTriggerKeyDown(e) {
+    if (e.key === 'ArrowDown' || e.key === 'Enter' || e.key === ' ') {
+      e.preventDefault();
+      setOpen(true);
+    }
+  }
+
+  return (
+    <div className={`custom-select${open ? ' is-open' : ''}`} ref={dropdownRef}>
+      <button
+        id="f-gender"
+        ref={triggerRef}
+        className="custom-select-trigger"
+        type="button"
+        role="combobox"
+        aria-haspopup="listbox"
+        aria-expanded={open}
+        aria-controls="gender-listbox"
+        aria-labelledby="f-gender-label f-gender"
+        onClick={() => setOpen((next) => !next)}
+        onKeyDown={handleTriggerKeyDown}
+      >
+        <span className="custom-select-value" data-placeholder={!value}>{selectedText}</span>
+      </button>
+
+      {open && (
+        <div className="custom-select-menu" id="gender-listbox" role="listbox" aria-labelledby="f-gender-label">
+          {GENDER_OPTIONS.map((option) => (
+            <button
+              key={option}
+              className={`custom-select-option${value === option ? ' is-selected' : ''}`}
+              type="button"
+              role="option"
+              aria-selected={value === option}
+              onClick={() => choose(option)}
+            >
+              {option}
+            </button>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
 export default function App() {
   const [form, setForm] = useState(EMPTY_FORM);
   const [view, setView] = useState('form'); // 'form' | 'result'
@@ -66,6 +145,7 @@ export default function App() {
 
   const update = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
   const updateBirth = (e) => setForm((f) => ({ ...f, birth: formatBirth(e.target.value) }));
+  const updateGender = (gender) => setForm((f) => ({ ...f, gender }));
 
   useEffect(() => {
     if (!isBusy) return undefined;
@@ -207,14 +287,8 @@ export default function App() {
               <input id="f-dest" type="text" value={form.destination} onChange={update('destination')} placeholder="예) 도쿄, 파리, 발리" />
             </div>
             <div className="form-group">
-              <label htmlFor="f-gender">원하는 인연 성별</label>
-              <div className="select-wrap">
-                <select id="f-gender" value={form.gender} onChange={update('gender')}>
-                  <option value="">선택해주세요</option>
-                  <option value="남성">남성</option>
-                  <option value="여성">여성</option>
-                </select>
-              </div>
+              <label id="f-gender-label" htmlFor="f-gender">원하는 인연 성별</label>
+              <GenderDropdown value={form.gender} onChange={updateGender} />
             </div>
             {formError && <p className="form-error" role="alert">{formError}</p>}
             <button className="submit-btn" type="submit" disabled={loading}>
