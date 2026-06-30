@@ -43,6 +43,18 @@ async function captureShareBlob(node, options) {
   return toBlob(node, options);
 }
 
+// 데스크탑: 파일을 다운로드 폴더로 저장한다.
+function downloadBlob(blob, filename) {
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.download = filename;
+  document.body.appendChild(link);
+  link.click();
+  link.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+}
+
 function formatBirth(value) {
   const digits = value.replace(/\D/g, '').slice(0, 6);
   if (digits.length <= 2) return digits;
@@ -279,70 +291,67 @@ export default function App() {
     document.body.removeChild(textarea);
   }
 
-  async function copyText(text, message) {
-    await writeClipboardText(text);
+  function flashToast(message) {
     setToast(message);
     setTimeout(() => setToast(''), 2500);
   }
 
-  async function copyShareUrl(url, message = '링크가 복사되었어요!') {
-    await copyText(url, message);
+  async function copyText(text, message) {
+    await writeClipboardText(text);
+    flashToast(message);
   }
 
-  async function shareNativeOrCopy(shareData, fallbackMessage) {
-    if (navigator.share) {
-      await navigator.share(shareData);
-    } else {
-      await copyShareUrl(shareData.url, fallbackMessage);
-    }
-  }
-
-  async function handleResultShare() {
-    const shareUrl = window.location.href;
-    const shareData = {
-      title: `${form.name || '나'}님의 여행지 인연`,
-      text: resultData?.name
-        ? `${form.destination}에서 만날 ${resultData.name}와의 인연을 확인해보세요!`
-        : '이번 여행에서 만날 인연을 미리 확인해보세요!',
-      url: shareUrl,
-    };
+  async function handleResultSave() {
+    const captureNode = resultCaptureRef.current;
+    if (!captureNode) return;
 
     try {
-      let imageFile = null;
-      const captureNode = resultCaptureRef.current;
-      if (captureNode) {
-        await ensureImagesDecoded(captureNode);
-        const captureRect = captureNode.getBoundingClientRect();
-        const captureWidth = Math.ceil(captureRect.width);
-        // 캡처 하단에 흰 여백 추가(마지막 스토리 카드가 이미지 끝에 붙어 답답해 보이는 것 방지)
-        const captureBottomPadding = 24;
-        const captureHeight = Math.ceil(captureNode.scrollHeight || captureRect.height) + captureBottomPadding;
-        const blob = await captureShareBlob(captureNode, {
-          backgroundColor: '#ffffff',
-          cacheBust: true,
-          width: captureWidth,
-          height: captureHeight,
-          style: {
-            // 라이브 뷰의 풀블리드용 margin: 0 -18px 를 캡처 시 0 으로 덮어 우측 여백/좌측 잘림 방지
-            width: `${captureWidth}px`,
-            height: `${captureHeight}px`,
-            margin: '0',
-            overflow: 'visible',
-          },
-          pixelRatio: Math.min(2, window.devicePixelRatio || 1),
-          filter: (node) => node.dataset?.shareExclude !== 'true',
-        });
-        if (blob) imageFile = new File([blob], 'hyundai-dutyfree-result.png', { type: 'image/png' });
-      }
-
-      if (imageFile && navigator.canShare?.({ files: [imageFile] })) {
-        await navigator.share({ ...shareData, files: [imageFile] });
+      await ensureImagesDecoded(captureNode);
+      const captureRect = captureNode.getBoundingClientRect();
+      const captureWidth = Math.ceil(captureRect.width);
+      // 캡처 하단에 흰 여백 추가(마지막 스토리 카드가 이미지 끝에 붙어 답답해 보이는 것 방지)
+      const captureBottomPadding = 24;
+      const captureHeight = Math.ceil(captureNode.scrollHeight || captureRect.height) + captureBottomPadding;
+      const blob = await captureShareBlob(captureNode, {
+        backgroundColor: '#ffffff',
+        cacheBust: true,
+        width: captureWidth,
+        height: captureHeight,
+        style: {
+          // 라이브 뷰의 풀블리드용 margin: 0 -18px 를 캡처 시 0 으로 덮어 우측 여백/좌측 잘림 방지
+          width: `${captureWidth}px`,
+          height: `${captureHeight}px`,
+          margin: '0',
+          overflow: 'visible',
+        },
+        pixelRatio: Math.min(2, window.devicePixelRatio || 1),
+        filter: (node) => node.dataset?.shareExclude !== 'true',
+      });
+      if (!blob) {
+        flashToast('저장에 실패했어요. 다시 시도해주세요.');
         return;
       }
 
-      await shareNativeOrCopy(shareData, '결과 링크가 복사되었어요!');
+      const file = new File([blob], 'hyundai-dutyfree-result.png', { type: 'image/png' });
+      // 모바일: 사진첩 저장은 공유 시트의 "이미지 저장"이 유일한 경로 → 파일만 공유한다.
+      const canShareFile = navigator.canShare?.({ files: [file] });
+      const isTouch = window.matchMedia?.('(pointer: coarse)').matches;
+      if (canShareFile && isTouch) {
+        try {
+          await navigator.share({ files: [file] });
+          flashToast('저장됐습니다.');
+          return;
+        } catch (err) {
+          if (err?.name === 'AbortError') return; // 사용자가 시트를 닫은 경우
+          // 그 외 공유 실패 → 다운로드로 폴백
+        }
+      }
+
+      // 데스크탑(또는 공유 불가): 파일 다운로드
+      downloadBlob(file, 'hyundai-dutyfree-result.png');
+      flashToast('저장됐습니다.');
     } catch {
-      /* 사용자 취소 등은 무시 */
+      flashToast('저장에 실패했어요. 다시 시도해주세요.');
     }
   }
 
@@ -460,8 +469,8 @@ export default function App() {
             <a className="secondary-action" href={DUTYFREE_LINK} target="_blank" rel="noopener noreferrer nofollow">
               🏪 현대면세점 보러가기
             </a>
-            <button className="share-action" type="button" onClick={handleResultShare}>
-              결과지 공유하기
+            <button className="share-action" type="button" onClick={handleResultSave}>
+              결과지 저장하기
             </button>
             <button className="share-action" type="button" onClick={handleTestShare}>
               테스트 공유하기
