@@ -41,8 +41,7 @@ function inlineScripts(html) {
     let js = readUtf8(jsPath);
     const replacements = {
       '/logo.png': dataUrlFor('/logo.png'),
-      '/favicon.png': dataUrlFor('/favicon.png'),
-      '/og-image.png': dataUrlFor('/og-image.png'),
+      '/hyundai-dutyfree-wordmark-white.png': dataUrlFor('/hyundai-dutyfree-wordmark-white.png'),
     };
     for (const [from, to] of Object.entries(replacements)) {
       js = js.replaceAll(JSON.stringify(from), JSON.stringify(to));
@@ -52,13 +51,6 @@ function inlineScripts(html) {
   });
 }
 
-function inlineHeadPublicAssets(html) {
-  const favicon = dataUrlFor('/favicon.png');
-  return html
-    .replace(/href="\/favicon\.png"/g, `href="${favicon}"`)
-    .replace(/content="https:\/\/hyundai-dutyfree\.vercel\.app\/og-image\.png"/g, `content="${dataUrlFor('/og-image.png')}"`);
-}
-
 if (!fs.existsSync(htmlPath)) {
   throw new Error('dist/index.html not found. Run `npm run build` before this script.');
 }
@@ -66,7 +58,6 @@ if (!fs.existsSync(htmlPath)) {
 let html = readUtf8(htmlPath);
 html = inlineStyles(html);
 html = inlineScripts(html);
-html = inlineHeadPublicAssets(html);
 html = html.replace(/\n\s*<link rel="modulepreload"[^>]+>/g, '');
 
 fs.writeFileSync(outPath, html);

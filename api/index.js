@@ -9,6 +9,8 @@ const IMAGE_SIZE = '1024x1024';
 const IMAGE_QUALITY = 'medium';
 const ALLOWED_GENDERS = ['남성', '여성'];
 const CATEGORY_NAMES = CATEGORIES.map((category) => category.ko);
+// Origin 은 경로 없는 scheme://host 이므로 임베드 페이지(예:
+// https://www.hddfs.com/event/op/evnt/evntShop.do)는 'https://www.hddfs.com' 로 허용된다.
 const DEFAULT_ALLOWED_ORIGINS = [
   'http://localhost:5173',
   'https://hyundai-dutyfree.vercel.app',
