@@ -110,27 +110,32 @@ a { color: inherit; text-decoration: none; }
 }
 .custom-select { position: relative; }
 .custom-select-trigger {
+  position: relative;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-right: 42px;
+  padding-right: 50px;
   text-align: left;
   cursor: pointer;
 }
 .custom-select-trigger::after {
-  content: '▾';
+  content: '';
   position: absolute;
-  right: 16px;
+  right: 18px;
   top: 50%;
-  color: #bbb;
-  font-size: 12px;
+  width: 11px;
+  height: 11px;
+  border-right: 2.5px solid currentColor;
+  border-bottom: 2.5px solid currentColor;
+  color: #777;
   pointer-events: none;
-  transform: translateY(-50%);
+  transform: translateY(-65%) rotate(45deg);
+  transform-origin: center;
   transition: transform .18s ease, color .18s ease;
 }
 .custom-select.is-open .custom-select-trigger::after {
   color: #E84127;
-  transform: translateY(-50%) rotate(180deg);
+  transform: translateY(-35%) rotate(225deg);
 }
 .custom-select-value[data-placeholder="true"] { color: #bbb; }
 .custom-select-menu {
