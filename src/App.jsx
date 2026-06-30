@@ -384,11 +384,13 @@ export default function App() {
             <h1 className="result-heading"><span>{form.name || 'OO'}님의</span> 여행지 인연</h1>
 
             <div className="image-stage">
-              <button className="image-close-button" type="button" onClick={handleReset} aria-label="이전 화면으로 돌아가기" data-share-exclude="true">
-                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
-                  <path d="M6 6l12 12M18 6L6 18" />
-                </svg>
-              </button>
+              {imageSrc && (
+                <button className="image-close-button" type="button" onClick={handleReset} aria-label="이전 화면으로 돌아가기" data-share-exclude="true">
+                  <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                    <path d="M6 6l12 12M18 6L6 18" />
+                  </svg>
+                </button>
+              )}
               {imageSrc ? (
                 <img className="result-image" src={imageSrc} alt={`${form.destination}에서 만날 인연의 모습`} />
               ) : (
@@ -399,7 +401,7 @@ export default function App() {
                   </p>
                 </div>
               )}
-              <div className="image-brand-logo-wrap"><ImageBrandLogo /></div>
+              {imageSrc && <div className="image-brand-logo-wrap"><ImageBrandLogo /></div>}
             </div>
 
             {imageError && <p className="image-note">이미지 없이 결과를 먼저 보여드릴게요.</p>}
