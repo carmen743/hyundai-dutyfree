@@ -295,10 +295,21 @@ export default function App() {
 
     try {
       let imageFile = null;
-      if (resultCaptureRef.current) {
-        const blob = await toBlob(resultCaptureRef.current, {
+      const captureNode = resultCaptureRef.current;
+      if (captureNode) {
+        const captureRect = captureNode.getBoundingClientRect();
+        const captureWidth = Math.ceil(captureRect.width);
+        const captureHeight = Math.ceil(captureNode.scrollHeight || captureRect.height);
+        const blob = await toBlob(captureNode, {
           backgroundColor: '#ffffff',
           cacheBust: true,
+          width: captureWidth,
+          height: captureHeight,
+          style: {
+            width: `${captureWidth}px`,
+            height: `${captureHeight}px`,
+            overflow: 'visible',
+          },
           pixelRatio: Math.min(2, window.devicePixelRatio || 1),
           filter: (node) => node.dataset?.shareExclude !== 'true',
         });

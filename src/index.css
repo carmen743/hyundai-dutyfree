@@ -255,6 +255,9 @@ a { color: inherit; text-decoration: none; }
 }
 .result-share-sheet {
   display: flex;
+  width: calc(100% + 36px);
+  margin: 0 -18px;
+  padding: 0 18px;
   flex-direction: column;
   gap: 16px;
   background: #fff;
