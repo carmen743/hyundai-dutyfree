@@ -344,7 +344,7 @@ a { color: inherit; text-decoration: none; }
   bottom: 24px;
   z-index: 1;
   display: flex;
-  width: min(56%, 130px);
+  width: min(56%, 80px);
   align-items: center;
   justify-content: center;
   transform: translateX(-50%);

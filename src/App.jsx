@@ -29,6 +29,20 @@ function ImageBrandLogo() {
   return <img className="image-brand-logo" src="/hyundai-dutyfree-wordmark-white.png" alt="HYUNDAI DUTY FREE" />;
 }
 
+// 캡처 직전에 노드 내부 이미지 디코딩을 보장한다(공유 버튼을 즉시 눌렀을 때의 미디코드 방지).
+async function ensureImagesDecoded(node) {
+  const images = Array.from(node.querySelectorAll('img'));
+  await Promise.all(images.map((img) => (img.decode ? img.decode().catch(() => {}) : Promise.resolve())));
+}
+
+// iOS Safari는 foreignObject 내부 이미지를 첫 rasterize 때 비워두는 경우가 있어,
+// 동일 옵션으로 두 번 워밍업 렌더한 뒤 마지막 결과를 사용한다.
+async function captureShareBlob(node, options) {
+  await toBlob(node, options);
+  await toBlob(node, options);
+  return toBlob(node, options);
+}
+
 function formatBirth(value) {
   const digits = value.replace(/\D/g, '').slice(0, 6);
   if (digits.length <= 2) return digits;
@@ -297,17 +311,20 @@ export default function App() {
       let imageFile = null;
       const captureNode = resultCaptureRef.current;
       if (captureNode) {
+        await ensureImagesDecoded(captureNode);
         const captureRect = captureNode.getBoundingClientRect();
         const captureWidth = Math.ceil(captureRect.width);
         const captureHeight = Math.ceil(captureNode.scrollHeight || captureRect.height);
-        const blob = await toBlob(captureNode, {
+        const blob = await captureShareBlob(captureNode, {
           backgroundColor: '#ffffff',
           cacheBust: true,
           width: captureWidth,
           height: captureHeight,
           style: {
+            // 라이브 뷰의 풀블리드용 margin: 0 -18px 를 캡처 시 0 으로 덮어 우측 여백/좌측 잘림 방지
             width: `${captureWidth}px`,
             height: `${captureHeight}px`,
+            margin: '0',
             overflow: 'visible',
           },
           pixelRatio: Math.min(2, window.devicePixelRatio || 1),
