@@ -25,13 +25,8 @@ function LogoMark({ small = false }) {
   return <img className={small ? 'logo logo-small' : 'logo'} src="/logo.png" alt="현대면세점" />;
 }
 
-function BrandWordmark() {
-  return (
-    <span className="brand-wordmark" aria-label="HYUNDAI DUTY FREE">
-      <span>HYUNDAI</span>
-      <strong>DUTY FREE</strong>
-    </span>
-  );
+function ImageBrandLogo() {
+  return <img className="image-brand-logo" src="/logo-transparent.png" alt="HYUNDAI DUTY FREE" />;
 }
 
 function formatBirth(value) {
@@ -252,14 +247,32 @@ export default function App() {
     setToast('');
   }
 
-  function getEventShareUrl() {
-    return globalThis.HDDFS_EVENT_URL || import.meta.env.VITE_EVENT_SHARE_URL || window.location.href;
+  async function writeClipboardText(text) {
+    if (navigator.clipboard?.writeText) {
+      await navigator.clipboard.writeText(text);
+      return;
+    }
+
+    const textarea = document.createElement('textarea');
+    textarea.value = text;
+    textarea.setAttribute('readonly', '');
+    textarea.style.position = 'fixed';
+    textarea.style.top = '-1000px';
+    textarea.style.opacity = '0';
+    document.body.appendChild(textarea);
+    textarea.select();
+    document.execCommand('copy');
+    document.body.removeChild(textarea);
+  }
+
+  async function copyText(text, message) {
+    await writeClipboardText(text);
+    setToast(message);
+    setTimeout(() => setToast(''), 2500);
   }
 
   async function copyShareUrl(url, message = '링크가 복사되었어요!') {
-    await navigator.clipboard.writeText(url);
-    setToast(message);
-    setTimeout(() => setToast(''), 2500);
+    await copyText(url, message);
   }
 
   async function shareNativeOrCopy(shareData, fallbackMessage) {
@@ -287,6 +300,7 @@ export default function App() {
           backgroundColor: '#ffffff',
           cacheBust: true,
           pixelRatio: Math.min(2, window.devicePixelRatio || 1),
+          filter: (node) => node.dataset?.shareExclude !== 'true',
         });
         if (blob) imageFile = new File([blob], 'hyundai-dutyfree-result.png', { type: 'image/png' });
       }
@@ -303,16 +317,11 @@ export default function App() {
   }
 
   async function handleTestShare() {
-    const shareUrl = getEventShareUrl();
-    const shareData = {
-      title: FULL_TITLE,
-      text: '여행지에서 만날 인연과 행운의 아이템을 확인해보세요!',
-      url: shareUrl,
-    };
+    const shareText = `${FULL_TITLE}\n${window.location.href}`;
     try {
-      await shareNativeOrCopy(shareData, '테스트 링크가 복사되었어요!');
+      await copyText(shareText, '테스트 공유 문구와 링크가 복사되었어요!');
     } catch {
-      /* 사용자 취소 등은 무시 */
+      /* 클립보드 권한 거부 등은 무시 */
     }
   }
 
@@ -375,6 +384,11 @@ export default function App() {
             <h1 className="result-heading"><span>{form.name || 'OO'}님의</span> 여행지 인연</h1>
 
             <div className="image-stage">
+              <button className="image-close-button" type="button" onClick={handleReset} aria-label="이전 화면으로 돌아가기" data-share-exclude="true">
+                <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false">
+                  <path d="M6 6l12 12M18 6L6 18" />
+                </svg>
+              </button>
               {imageSrc ? (
                 <img className="result-image" src={imageSrc} alt={`${form.destination}에서 만날 인연의 모습`} />
               ) : (
@@ -386,7 +400,7 @@ export default function App() {
                   <span>Image area</span>
                 </div>
               )}
-              <div className="image-brand-strip"><BrandWordmark /></div>
+              <div className="image-brand-logo-wrap"><ImageBrandLogo /></div>
             </div>
 
             {imageError && <p className="image-note">이미지 없이 결과를 먼저 보여드릴게요.</p>}

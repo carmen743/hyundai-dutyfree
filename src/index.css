@@ -114,7 +114,7 @@ a { color: inherit; text-decoration: none; }
   display: flex;
   align-items: center;
   justify-content: space-between;
-  padding-right: 50px;
+  padding-right: 44px;
   text-align: left;
   cursor: pointer;
 }
@@ -123,13 +123,13 @@ a { color: inherit; text-decoration: none; }
   position: absolute;
   right: 18px;
   top: 50%;
-  width: 11px;
-  height: 11px;
-  border-right: 2.5px solid currentColor;
-  border-bottom: 2.5px solid currentColor;
-  color: #777;
+  width: 8px;
+  height: 8px;
+  border-right: 2px solid currentColor;
+  border-bottom: 2px solid currentColor;
+  color: #9a9a9a;
   pointer-events: none;
-  transform: translateY(-65%) rotate(45deg);
+  transform: translateY(-60%) rotate(45deg);
   transform-origin: center;
   transition: transform .18s ease, color .18s ease;
 }
@@ -255,7 +255,7 @@ a { color: inherit; text-decoration: none; }
   background: #fff;
 }
 .result-heading {
-  color: #F06B2D;
+  color: #E84127;
   font-size: 20px;
   line-height: 1.2;
   font-weight: 950;
@@ -303,38 +303,57 @@ a { color: inherit; text-decoration: none; }
   letter-spacing: .08em;
   text-transform: uppercase;
 }
-.image-brand-strip {
+.image-close-button {
   position: absolute;
-  left: 18px;
-  right: 18px;
-  bottom: 16px;
+  left: 16px;
+  top: 16px;
+  z-index: 2;
+  display: flex;
+  width: 34px;
+  height: 34px;
+  align-items: center;
+  justify-content: center;
+  color: #fff;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+  filter: drop-shadow(0 1px 4px rgba(0, 0, 0, .5));
+}
+.image-close-button svg {
+  width: 24px;
+  height: 24px;
+  overflow: visible;
+}
+.image-close-button path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 2.6;
+  stroke-linecap: round;
+}
+.image-close-button:focus-visible {
+  outline: 2px solid #fff;
+  outline-offset: 3px;
+}
+.image-brand-logo-wrap {
+  position: absolute;
+  left: 50%;
+  bottom: 18px;
   z-index: 1;
   display: flex;
-  min-height: 54px;
+  width: 118px;
+  height: 118px;
   align-items: center;
   justify-content: center;
-  color: #fff;
-  background: #3F74C6;
-  border: 1px solid rgba(255, 255, 255, .18);
-  border-radius: 4px;
-  box-shadow: 0 12px 30px rgba(25, 55, 105, .28);
+  transform: translateX(-50%);
+  pointer-events: none;
+  filter: drop-shadow(0 10px 24px rgba(0, 0, 0, .28));
 }
-.brand-wordmark {
-  display: inline-flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  color: #fff;
-  font-size: 8px;
-  font-weight: 800;
-  letter-spacing: .04em;
-  line-height: 1.05;
-}
-.brand-wordmark strong {
-  color: #fff;
-  font-size: 9px;
-  font-weight: 900;
-  letter-spacing: .055em;
+.image-brand-logo {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
 }
 .image-note {
   color: #888;
