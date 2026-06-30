@@ -25,13 +25,8 @@ function LogoMark({ small = false }) {
   return <img className={small ? 'logo logo-small' : 'logo'} src="/logo.png" alt="현대면세점" />;
 }
 
-function ImageBrandWordmark() {
-  return (
-    <span className="image-brand-wordmark" aria-label="HYUNDAI DUTY FREE">
-      <span>HYUNDAI</span>
-      <strong>DUTY FREE</strong>
-    </span>
-  );
+function ImageBrandLogo() {
+  return <img className="image-brand-logo" src="/hyundai-dutyfree-wordmark-white.png" alt="HYUNDAI DUTY FREE" />;
 }
 
 function formatBirth(value) {
@@ -405,7 +400,7 @@ export default function App() {
                   <span>Image area</span>
                 </div>
               )}
-              <div className="image-brand-wordmark-wrap"><ImageBrandWordmark /></div>
+              <div className="image-brand-logo-wrap"><ImageBrandLogo /></div>
             </div>
 
             {imageError && <p className="image-note">이미지 없이 결과를 먼저 보여드릴게요.</p>}
