@@ -56,6 +56,11 @@ a { color: inherit; text-decoration: none; }
   height: 58px;
   margin-bottom: 12px;
 }
+.image-placeholder .logo-small {
+  width: 68px;
+  height: 68px;
+  margin-bottom: 14px;
+}
 
 .intro-card h1,
 .loading-screen h1 {
