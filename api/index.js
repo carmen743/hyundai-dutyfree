@@ -19,6 +19,8 @@ const DEFAULT_ALLOWED_ORIGINS = [
   'https://en.hddfs.com',
   'https://men.hddfs.com',
   'https://m.hddfs.com',
+  // srcdoc/sandbox iframe 임베드는 Origin: null 을 보내므로 허용한다(다른 명시 도메인은 계속 차단).
+  'null',
 ];
 
 // 유료 API 호출 전에 입력을 검증한다. 통과 못 하면 비용 발생 없이 400.
