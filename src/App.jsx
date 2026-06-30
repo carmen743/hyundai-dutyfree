@@ -397,7 +397,6 @@ export default function App() {
                   <p key={loadingMessage} className="loading-message image-message">
                     {imageLoading ? loadingMessage : '이미지 생성이 지연되어 텍스트 결과 먼저 보여드려요.'}
                   </p>
-                  <span>Image area</span>
                 </div>
               )}
               <div className="image-brand-logo-wrap"><ImageBrandLogo /></div>
