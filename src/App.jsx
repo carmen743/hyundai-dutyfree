@@ -314,7 +314,9 @@ export default function App() {
         await ensureImagesDecoded(captureNode);
         const captureRect = captureNode.getBoundingClientRect();
         const captureWidth = Math.ceil(captureRect.width);
-        const captureHeight = Math.ceil(captureNode.scrollHeight || captureRect.height);
+        // 캡처 하단에 흰 여백 추가(마지막 스토리 카드가 이미지 끝에 붙어 답답해 보이는 것 방지)
+        const captureBottomPadding = 24;
+        const captureHeight = Math.ceil(captureNode.scrollHeight || captureRect.height) + captureBottomPadding;
         const blob = await captureShareBlob(captureNode, {
           backgroundColor: '#ffffff',
           cacheBust: true,
