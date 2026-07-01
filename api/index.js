@@ -4,7 +4,7 @@ import { SYSTEM_PROMPT, CATEGORIES, buildGenerationContext, buildUserMessage, bu
 // --- 서버 고정 상수 (클라이언트가 변경 불가) ---
 const TEXT_MODEL = 'gpt-4o';
 const TEXT_MAX_TOKENS = 2200;
-const IMAGE_MODEL = 'gpt-image-1';
+const IMAGE_MODEL = 'gpt-image-2';
 const IMAGE_SIZE = '1024x1024';
 const IMAGE_QUALITY = 'medium';
 const ALLOWED_GENDERS = ['남성', '여성'];
