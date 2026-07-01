@@ -2,8 +2,8 @@ import https from 'node:https';
 import { SYSTEM_PROMPT, CATEGORIES, buildGenerationContext, buildUserMessage, buildImagePrompt, enforceImagePromptSafety } from './prompts.js';
 
 // --- 서버 고정 상수 (클라이언트가 변경 불가) ---
-const TEXT_MODEL = 'gpt-4o';
-const TEXT_MAX_TOKENS = 2200;
+const TEXT_MODEL = 'gpt-5.4-mini';
+const TEXT_MAX_COMPLETION_TOKENS = 2200;
 const IMAGE_MODEL = 'gpt-image-2';
 const IMAGE_SIZE = '1024x1024';
 const IMAGE_QUALITY = 'low';
@@ -205,7 +205,7 @@ export default async function handler(req, res) {
       const generationContext = buildGenerationContext(fields, { previousEthnicity });
       const payload = {
         model: TEXT_MODEL,
-        max_tokens: TEXT_MAX_TOKENS,
+        max_completion_tokens: TEXT_MAX_COMPLETION_TOKENS,
         response_format: { type: 'json_object' },
         messages: [
           { role: 'system', content: SYSTEM_PROMPT },
