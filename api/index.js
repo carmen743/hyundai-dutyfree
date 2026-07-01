@@ -89,6 +89,32 @@ function normalizeArray(value, limit) {
 
 const UNSAFE_RESULT_TEXT = /섹시|관능|도발|야한|노출|가슴|글래머/i;
 const SAFE_PERSONALITY_FALLBACKS = ['다정함', '여유로움', '센스있음'];
+const KOREAN_NAME_PATTERN = /^[가-힣][가-힣\s·.'-]{0,30}$/;
+const FALLBACK_KOREAN_NAMES = {
+  남성: ['아드리앙 로랑', '루카 마르탱', '마테오 리치', '노아 베넷', '레오 하르트'],
+  여성: ['소피아 로시', '엘라 마르탱', '미아 베넷', '리나 바이스', '클라라 로랑'],
+};
+
+function hashString(value) {
+  let hash = 2166136261;
+  for (let i = 0; i < value.length; i += 1) {
+    hash ^= value.charCodeAt(i);
+    hash = Math.imul(hash, 16777619);
+  }
+  return hash >>> 0;
+}
+
+function fallbackKoreanName(fields) {
+  const list = FALLBACK_KOREAN_NAMES[fields?.gender] || FALLBACK_KOREAN_NAMES.여성;
+  const seed = `${fields?.resultSeed || ''}|${fields?.name || ''}|${fields?.birth || ''}|${fields?.destination || ''}|${fields?.gender || ''}`;
+  return list[hashString(seed) % list.length];
+}
+
+function sanitizeKoreanName(value, fields) {
+  const normalized = normalizeString(value, '').replace(/\s+/g, ' ').trim();
+  if (!normalized || !KOREAN_NAME_PATTERN.test(normalized)) return fallbackKoreanName(fields);
+  return normalized;
+}
 
 function sanitizeResultText(value, fallback = '') {
   const normalized = normalizeString(value, fallback);
@@ -117,7 +143,7 @@ function normalizeResult(raw, fields, generationContext) {
 
   return {
     tagline: `${fields.name}님의 운명이 ${fields.destination}에서 기다리고 있습니다.`,
-    name: normalizeString(raw?.name, '운명의 인연'),
+    name: sanitizeKoreanName(raw?.name, fields),
     nationality: normalizeString(raw?.nationality, `${fields.destination}의 여행자`),
     job: normalizeString(raw?.job, '여행자'),
     personality,
