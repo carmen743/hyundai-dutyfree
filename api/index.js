@@ -6,7 +6,8 @@ const TEXT_MODEL = 'gpt-4o';
 const TEXT_MAX_TOKENS = 2200;
 const IMAGE_MODEL = 'gpt-image-2';
 const IMAGE_SIZE = '1024x1024';
-const IMAGE_QUALITY = 'medium';
+const IMAGE_QUALITY = 'low';
+const IMAGE_TIMEOUT_MS = 120000;
 const ALLOWED_GENDERS = ['남성', '여성'];
 const CATEGORY_NAMES = CATEGORIES.map((category) => category.ko);
 // Origin 은 경로 없는 scheme://host 이므로 임베드 페이지(예:
@@ -239,7 +240,7 @@ export default async function handler(req, res) {
     let openaiResult = null;
     let openaiErr = null;
     try {
-      openaiResult = await makeJsonRequest('api.openai.com', '/v1/images/generations', imagePayload, openaiKey, 30000);
+      openaiResult = await makeJsonRequest('api.openai.com', '/v1/images/generations', imagePayload, openaiKey, IMAGE_TIMEOUT_MS);
     } catch (e) {
       openaiErr = e.message;
     }
