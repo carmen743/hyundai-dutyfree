@@ -108,7 +108,10 @@ function normalizePersonality(value) {
 function normalizeResult(raw, fields, generationContext) {
   const category = CATEGORY_NAMES.includes(raw?.category) ? raw.category : generationContext.category.ko;
   const fallbackImagePrompt = buildImagePrompt({ ...fields, generationContext });
-  const imagePrompt = enforceImagePromptSafety(normalizeString(raw?.imagePrompt, fallbackImagePrompt), fields).slice(0, 2200);
+  const imagePrompt = enforceImagePromptSafety(
+    normalizeString(raw?.imagePrompt, fallbackImagePrompt),
+    { ...fields, ethnicityInstruction: generationContext.ethnicity?.image },
+  ).slice(0, 2200);
   const personality = normalizePersonality(raw?.personality);
   const story = normalizeArray(raw?.story, 7);
 

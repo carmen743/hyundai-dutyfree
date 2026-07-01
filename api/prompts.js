@@ -4,7 +4,7 @@ const ETHNICITY_GROUPS = [
   {
     id: 'east-asian',
     ko: '동아시아계',
-    image: 'East Asian ethnicity, with natural skin tone, facial structure, eyes, and hair details consistent with that background',
+    image: 'East Asian ethnicity, such as Korean, Japanese, Chinese, or Taiwanese, with natural skin tone, facial structure, eyes, and hair details consistent with that background',
   },
   {
     id: 'southeast-asian',
@@ -14,7 +14,7 @@ const ETHNICITY_GROUPS = [
   {
     id: 'south-asian',
     ko: '남아시아계',
-    image: 'South Asian ethnicity, with natural skin tone, facial structure, eyes, and hair details consistent with that background',
+    image: 'South Asian ethnicity, with natural skin tone, facial structure, eyes, and hair details consistent with that background, styled as a contemporary global traveler rather than Gulf or Middle Eastern styling',
   },
   {
     id: 'european',
@@ -34,7 +34,7 @@ const ETHNICITY_GROUPS = [
   {
     id: 'middle-eastern',
     ko: '중동계',
-    image: 'Middle Eastern ethnicity, with natural skin tone, facial structure, eyes, and hair details consistent with that background',
+    image: 'Middle Eastern ethnicity, with natural skin tone, facial structure, eyes, and hair details consistent with that background, contemporary clean-shaven or minimal-stubble travel styling without stereotypical heavy-beard or traditional costume cues',
   },
   {
     id: 'mixed',
@@ -47,13 +47,23 @@ const ETHNICITY_PICK_POOL = [
   'east-asian',
   'east-asian',
   'east-asian',
+  'east-asian',
+  'east-asian',
+  'east-asian',
+  'southeast-asian',
+  'southeast-asian',
   'southeast-asian',
   'south-asian',
   'european',
+  'european',
+  'european',
+  'black-african',
   'black-african',
   'latine',
-  'middle-eastern',
+  'latine',
   'mixed',
+  'mixed',
+  'middle-eastern',
 ].map((id) => ETHNICITY_GROUPS.find((group) => group.id === id));
 
 const ARCHETYPES = ['너드형', '쿨형', '터프형', '미남형', '꾸미는형', '소년형', '감성형', '청량형', '우아형'];
@@ -205,6 +215,8 @@ export const SYSTEM_PROMPT = `너는 '현대면세점 여행자 인연 미리보
 - imagePrompt는 영어로 작성한다.
 - ultra realistic photorealistic, 85mm portrait, upper body, face large and sharp, travel destination background clearly recognizable 조건을 포함한다.
 - 배정 인종에 맞는 얼굴 특징(피부톤·눈매·골격·헤어 텍스처 등)을 자연스럽고 사실적으로 반영한다.
+- imagePrompt에는 서버가 전달한 "이미지 외모 지시"를 그대로 포함하고, 여행지·국적이 외형 지시를 덮어쓰지 않게 한다.
+- 다양한 국적/민족의 현대적인 여행자처럼 보이게 하며, 특정 지역 고정관념(짙은 수염, 전통 복장 등)으로 과장하지 않는다.
 - 카메라 구도는 서버가 전달한 구도를 따른다.
 - 모든 인물은 respectful, photogenic, pleasant, natural actor/influencer 느낌으로 만든다. 과장되게 성적이거나 노출이 많은 분위기 금지.
 - 여성 인물은 단정하고 세련된 여행 복장, 가슴골·란제리·수영복·깊게 파인 상의·선정적 포즈 금지.
@@ -213,17 +225,20 @@ export const SYSTEM_PROMPT = `너는 '현대면세점 여행자 인연 미리보
 
 const IMAGE_SAFETY_SUFFIX = 'Respectful non-sexualized portrait. Modest stylish travel outfit. No cleavage, no lingerie, no swimwear, no deep neckline, no sexualized pose, no erotic styling, no text, no UI, no card layout, no graphics, no subtitle, no watermark, no logo, no illustration, no cartoon, no duplicated faces, no distorted hands, fictional person not resembling any real person.';
 
-export function enforceImagePromptSafety(prompt, { gender } = {}) {
+export function enforceImagePromptSafety(prompt, { gender, ethnicityInstruction } = {}) {
   const base = String(prompt || '')
     .replace(/\b(sexy|seductive|sensual|erotic|provocative|cleavage|lingerie|bikini|swimsuit|revealing|deep neckline)\b/gi, 'modestly dressed')
     .replace(/\b(ugly|awkward|average looking)\b/gi, 'photogenic')
-    .replace(/\b(heavy|thick|full|long)\s+beard\b/gi, 'clean-shaven or very light stubble')
+    .replace(/\b(heavy|thick|full|long)\s+beard\b/gi, 'clean-shaven face')
     .slice(0, 1700)
     .trim();
   const genderGuard = gender === '남성'
-    ? 'For a male subject, prefer clean-shaven or very light stubble, no heavy beard, no long beard.'
+    ? 'For a male subject, prefer a clean-shaven face; at most faint stubble, no beard, no thick stubble, no long beard.'
     : 'For a female subject, keep clothing elegant and modest, neckline covered, no visible cleavage.';
-  return `${base}. ${genderGuard} ${IMAGE_SAFETY_SUFFIX}`.slice(0, 2200);
+  const ethnicityGuard = ethnicityInstruction
+    ? `Appearance lock: ${ethnicityInstruction}. The destination or nationality must not override this appearance instruction. Use contemporary travel styling, not stereotypical regional costume or heavy-beard cues.`
+    : '';
+  return `${base}. ${ethnicityGuard} ${genderGuard} ${IMAGE_SAFETY_SUFFIX}`.slice(0, 2200);
 }
 
 export function buildImagePrompt({ destination, gender, generationContext }) {
@@ -232,7 +247,7 @@ export function buildImagePrompt({ destination, gender, generationContext }) {
   const imageVibe = ARCHETYPE_IMAGE_VIBES[ctx.archetype] || 'warm travel romance charm';
   const portraitDirection = `appealing photogenic fictional ${genderEn} in their late 20s, respectful and non-sexualized, natural actor or influencer presence, ${imageVibe}`;
 
-  return enforceImagePromptSafety(`A single ultra realistic photorealistic upper-body portrait of a ${portraitDirection}. ${ctx.ethnicity.image}. ${ctx.cameraAngle}. 85mm portrait lens, face large and sharp, clear skin, realistic facial symmetry, stylish casual travel outfit, soft cinematic lighting, magazine editorial photography quality. The background must clearly show iconic ${destination} scenery and atmosphere, immediately recognizable as ${destination}, not a generic street or blurred anonymous background. Pure person plus travel destination background only.`, { gender });
+  return enforceImagePromptSafety(`A single ultra realistic photorealistic upper-body portrait of a ${portraitDirection}. ${ctx.ethnicity.image}. ${ctx.cameraAngle}. 85mm portrait lens, face large and sharp, clear skin, realistic facial symmetry, stylish casual travel outfit, soft cinematic lighting, magazine editorial photography quality. The background must clearly show iconic ${destination} scenery and atmosphere, immediately recognizable as ${destination}, not a generic street or blurred anonymous background. Pure person plus travel destination background only.`, { gender, ethnicityInstruction: ctx.ethnicity.image });
 }
 
 export function buildUserMessage({ name, birth, destination, gender, generationContext }) {
