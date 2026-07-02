@@ -62,6 +62,25 @@ function formatBirth(value) {
   return `${digits.slice(0, 2)}.${digits.slice(2, 4)}.${digits.slice(4)}`;
 }
 
+// 공유 링크는 위젯 파일 주소가 아니라 "위젯이 삽입된 hddfs 이벤트 페이지" 주소여야 한다.
+// 이벤트마다 evntId가 달라지므로: iframe src의 ?evntId= → 동일 도메인 임베드 시 부모 페이지(referrer) → 빌드 주입 기본값 순.
+function resolveEventShareUrl() {
+  const evntId = new URLSearchParams(window.location.search).get('evntId')?.trim() || '';
+  if (/^[0-9A-Za-z_-]{1,20}$/.test(evntId)) {
+    return `https://www.hddfs.com/event/op/evnt/evntDetail.do?evntId=${evntId}`;
+  }
+  try {
+    const referrer = new URL(document.referrer);
+    // hddfs.com 계열의 구체 경로일 때만 신뢰한다(크로스 오리진 임베드면 referrer가 origin만 남아 경로가 '/'가 된다).
+    if (referrer.protocol === 'https:' && /(^|\.)hddfs\.com$/.test(referrer.hostname) && referrer.pathname.length > 1) {
+      return referrer.href;
+    }
+  } catch {
+    /* referrer 없음(직접 접속/srcdoc) → 아래 폴백 */
+  }
+  return globalThis.HDDFS_EVENT_URL || window.location.href;
+}
+
 function normalizeGeneratedResult(result, form) {
   const story = Array.isArray(result?.story) ? result.story.filter(Boolean).slice(0, 7) : [];
   const personality = Array.isArray(result?.personality) ? result.personality.filter(Boolean).slice(0, 3) : [];
@@ -347,16 +366,17 @@ export default function App() {
         }
       }
 
-      // 데스크탑(또는 공유 불가): 파일 다운로드
+      // 데스크탑(또는 공유 불가): 파일 다운로드. 앵커 다운로드는 완료/차단을 감지할 수 없으므로
+      // 완료를 단정하지 않고 시작 사실만 알린다(sandbox 임베드에서 차단돼도 거짓 성공 방지).
       downloadBlob(file, 'hyundai-dutyfree-result.png');
-      flashToast('저장됐습니다.');
+      flashToast('결과지 다운로드를 시작했어요.');
     } catch {
       flashToast('저장에 실패했어요. 다시 시도해주세요.');
     }
   }
 
   async function handleTestShare() {
-    const shareText = `${FULL_TITLE}\n${window.location.href}`;
+    const shareText = `${FULL_TITLE}\n${resolveEventShareUrl()}`;
     try {
       await copyText(shareText, '테스트 공유 문구와 링크가 복사되었어요!');
     } catch {
