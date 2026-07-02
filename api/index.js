@@ -23,6 +23,8 @@ const DEFAULT_ALLOWED_ORIGINS = [
   // srcdoc/sandbox iframe 임베드는 Origin: null 을 보내므로 허용한다(다른 명시 도메인은 계속 차단).
   'null',
 ];
+// 임베드 파일의 업로드 위치를 사전에 알 수 없다(www/image/cdn 등 혼용). hddfs.com 계열 https 서브도메인은 전체 허용한다.
+const HDDFS_ORIGIN_PATTERN = /^https:\/\/(?:[a-z0-9-]+\.)*hddfs\.com$/i;
 
 // 유료 API 호출 전에 입력을 검증한다. 통과 못 하면 비용 발생 없이 400.
 function validateFields(body) {
@@ -166,7 +168,7 @@ export default async function handler(req, res) {
   const configuredOrigins = (process.env.ALLOWED_ORIGIN || '').split(',').map((s) => s.trim()).filter(Boolean);
   const allowed = [...new Set([...DEFAULT_ALLOWED_ORIGINS, ...configuredOrigins])];
   const origin = req.headers.origin;
-  if (!origin || !allowed.includes(origin)) {
+  if (!origin || !(allowed.includes(origin) || HDDFS_ORIGIN_PATTERN.test(origin))) {
     res.status(403).json({ error: 'FORBIDDEN_ORIGIN' });
     return;
   }
