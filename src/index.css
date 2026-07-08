@@ -85,10 +85,33 @@ a { color: inherit; text-decoration: none; }
   font-weight: 400;
   margin-bottom: 0;
 }
+.intro-event-copy {
+  margin-top: 8px;
+  color: #888;
+  font-size: 14px;
+  line-height: 1.75;
+  font-weight: 400;
+  letter-spacing: 0;
+  word-break: keep-all;
+  white-space: nowrap;
+}
+.intro-event-copy p + p { margin-top: 0; }
+.intro-event-link {
+  display: inline-flex;
+  margin-top: 4px;
+  color: #6f8fb8;
+  font-size: 14px;
+  line-height: 1.75;
+  font-weight: 400;
+  letter-spacing: 0;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.intro-event-link:hover { color: #567aa8; }
 
 .input-form {
   width: 100%;
-  margin-top: 44px;
+  margin-top: 16px;
   text-align: left;
 }
 .form-group { margin-bottom: 14px; }
@@ -195,7 +218,7 @@ a { color: inherit; text-decoration: none; }
 }
 .submit-btn,
 .primary-action,
-.secondary-action,
+.sns-event-action,
 .share-action {
   display: inline-flex;
   width: 100%;
@@ -218,7 +241,7 @@ a { color: inherit; text-decoration: none; }
 .primary-action:hover { background: #d83b22; }
 .submit-btn:active,
 .primary-action:active,
-.secondary-action:active,
+.sns-event-action:active,
 .share-action:active { transform: translateY(1px) scale(.995); }
 .submit-btn:disabled { opacity: .45; cursor: not-allowed; }
 .submit-btn { margin-top: 10px; letter-spacing: -.01em; }
@@ -441,20 +464,59 @@ a { color: inherit; text-decoration: none; }
   gap: 10px;
   margin-top: 2px;
 }
-.secondary-action {
-  color: #222;
-  background: #fff;
-  border: 1px solid #e4e4e4;
+.event-callout {
+  margin-top: 8px;
+  padding: 0;
+  color: #666;
+  line-height: 1.45;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  text-align: center;
+  word-break: keep-all;
 }
-.secondary-action:hover { background: #f8f8f8; border-color: #d6d6d6; }
-.share-action {
+.event-callout p:first-child {
+  color: #555;
+  font-size: 13px;
+  line-height: 1.45;
+}
+.event-callout p + p {
+  margin-top: 2px;
+  color: #222;
+  font-size: 16px;
+  line-height: 1.45;
+}
+.sns-event-action {
+  height: 54px;
   color: #E84127;
-  background: rgba(232, 65, 39, .07);
-  border: 1px solid rgba(232, 65, 39, .24);
+  font-size: 17px;
+  letter-spacing: -0.03em;
+  background: #fff;
+  border: 1.5px solid rgba(232, 65, 39, .28);
+  box-shadow: 0 8px 18px rgba(232, 65, 39, .07);
+}
+.sns-event-action:hover {
+  color: #d83b22;
+  background: #fff8f6;
+  border-color: rgba(232, 65, 39, .42);
+}
+.share-action-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+}
+.share-action {
+  height: 58px;
+  color: #E84127;
+  font-size: 15px;
+  line-height: 1.2;
+  white-space: nowrap;
+  background: #fff;
+  border: 1px solid rgba(232, 65, 39, .22);
+  box-shadow: 0 6px 14px rgba(232, 65, 39, .05);
 }
 .share-action:hover {
   color: #d83b22;
-  background: rgba(232, 65, 39, .12);
+  background: #fff8f6;
   border-color: rgba(232, 65, 39, .36);
 }
 .toast {

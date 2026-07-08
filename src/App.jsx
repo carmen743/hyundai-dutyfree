@@ -6,7 +6,7 @@ const EMPTY_FORM = { name: '', birth: '', destination: '', gender: '' };
 const GENDER_OPTIONS = ['남성', '여성'];
 const APP_TITLE = '여행지 인연 미리보기';
 const FULL_TITLE = '현대면세점 여행자 인연 미리보기';
-const DUTYFREE_LINK = 'https://www.hddfs.com/';
+const INSTAGRAM_LINK = 'https://www.instagram.com/hddfs.official/';
 const CATEGORY_LINKS = {
   향수: 'https://www.hddfs.com/shop/dm/best/monthly.do?goosCtgId=0003',
   '패션/잡화': 'https://www.hddfs.com/shop/dm/best/monthly.do?goosCtgId=0007',
@@ -94,7 +94,6 @@ function normalizeGeneratedResult(result, form) {
     quote: result?.quote || '오늘은 그냥 지나치지 말아요.',
     story,
     category: result?.category || '향수',
-    imagePrompt: result?.imagePrompt || '',
     isComic: Boolean(result?.isComic),
   };
 }
@@ -256,14 +255,14 @@ export default function App() {
       setResultData(nextResult);
       setLoading(false);
 
-      if (!nextResult.imagePrompt) {
+      if (!textResult.imagePromptToken) {
         setImageError(true);
         return;
       }
 
       setImageLoading(true);
       try {
-        const imageResult = await callAPI('image', { ...fields, imagePrompt: nextResult.imagePrompt });
+        const imageResult = await callAPI('image', { ...fields, imagePromptToken: textResult.imagePromptToken });
         if (imageResult?.image) {
           setImageSrc(`data:image/png;base64,${imageResult.image}`);
         } else {
@@ -393,7 +392,13 @@ export default function App() {
           <LogoMark />
           <h1 id="main-title">{APP_TITLE}</h1>
           <p className="subtitle subtitle-strong">현대면세점 ✨[여]행 [연]애 [시]뮬레이션 출시✨</p>
-          <p className="subtitle">여행지에서 만나게 될 인연과<br />행운의 아이템을 알려드려요 🔮</p>
+          <div className="intro-event-copy">
+            <p>여행지에서 만날 인연과 행운 아이템을 알려드려요 🔮</p>
+            <p>+ SNS 이벤트 참여 시, 아이스크림 추첨 증정! 👍</p>
+          </div>
+          <a className="intro-event-link" href={INSTAGRAM_LINK} target="_blank" rel="noopener noreferrer nofollow">
+            이벤트 확인하러 가기 (@hddfs.official)
+          </a>
 
           <form className="input-form" onSubmit={handleSubmit}>
             <div className="form-group">
@@ -486,15 +491,24 @@ export default function App() {
             <a className="primary-action" href={itemLink} target="_blank" rel="noopener noreferrer nofollow">
               🛍 {resultData.name}의 취향 아이템 보기
             </a>
-            <a className="secondary-action" href={DUTYFREE_LINK} target="_blank" rel="noopener noreferrer nofollow">
-              🏪 현대면세점 보러가기
+
+            <div className="event-callout" aria-label="SNS 이벤트 안내">
+              <p>테스트하고 SNS 이벤트 참여하면?</p>
+              <p>추첨을 통해 아이스크림 드려요</p>
+            </div>
+
+            <a className="sns-event-action" href={INSTAGRAM_LINK} target="_blank" rel="noopener noreferrer nofollow">
+              🙌 SNS 이벤트 참여하기
             </a>
-            <button className="share-action" type="button" onClick={handleResultSave}>
-              결과지 저장하기
-            </button>
-            <button className="share-action" type="button" onClick={handleTestShare}>
-              테스트 공유하기
-            </button>
+
+            <div className="share-action-grid">
+              <button className="share-action" type="button" onClick={handleResultSave}>
+                결과지 저장하기
+              </button>
+              <button className="share-action" type="button" onClick={handleTestShare}>
+                테스트 공유하기
+              </button>
+            </div>
           </div>
           {toast && <div className="toast" role="status">{toast}</div>}
           <button className="reset-link" type="button" onClick={handleReset}>다시 입력하기</button>

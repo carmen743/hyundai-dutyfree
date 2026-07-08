@@ -1,3 +1,4 @@
+import crypto from 'node:crypto';
 import https from 'node:https';
 import { SYSTEM_PROMPT, CATEGORIES, buildGenerationContext, buildUserMessage, buildImagePrompt, enforceImagePromptSafety } from './prompts.js';
 
@@ -10,6 +11,8 @@ const IMAGE_QUALITY = 'low';
 const IMAGE_TIMEOUT_MS = 120000;
 const ALLOWED_GENDERS = ['남성', '여성'];
 const CATEGORY_NAMES = CATEGORIES.map((category) => category.ko);
+const IMAGE_PROMPT_TOKEN_VERSION = 'v1';
+const IMAGE_PROMPT_TOKEN_TTL_MS = 15 * 60 * 1000;
 // Origin 은 경로 없는 scheme://host 이므로 임베드 페이지(예:
 // https://www.hddfs.com/event/op/evnt/evntShop.do)는 'https://www.hddfs.com' 로 허용된다.
 const DEFAULT_ALLOWED_ORIGINS = [
@@ -89,7 +92,7 @@ function normalizeArray(value, limit) {
   return [];
 }
 
-const UNSAFE_RESULT_TEXT = /섹시|관능|도발|야한|노출|가슴|글래머/i;
+const UNSAFE_RESULT_TEXT = /19금|섹슈얼|섹스|성적|선정|야릇|므흣|에로|농염|관능|도발|유혹|스킨십|키스|입맞춤|입술|포옹|껴안|품에 안|침대|가슴|엉덩|허벅|노출|글래머|속옷|란제리|비키니|수영복|섹시|sexy|sex|sexual|sensual|erotic|seductive|provocative|suggestive|adult|nsfw|intimate|kiss|kissing|cleavage|lingerie|bikini|swimsuit|revealing|deep neckline|bedroom|nude|naked/i;
 const SAFE_PERSONALITY_FALLBACKS = ['다정함', '여유로움', '센스있음'];
 const KOREAN_NAME_PATTERN = /^[가-힣][가-힣\s·.'-]{0,30}$/;
 const FALLBACK_KOREAN_NAMES = {
@@ -106,6 +109,69 @@ function hashString(value) {
   return hash >>> 0;
 }
 
+function getImagePromptTokenKey(openaiKey) {
+  // 전용 secret이 있으면 사용하고, 없으면 이미 서버에만 존재하는 OpenAI key에서 파생한다.
+  // 토큰은 짧게 살아서 key rotation 시 기존 토큰이 무효화되어도 사용자 재시도만 필요하다.
+  const secret = process.env.IMAGE_PROMPT_TOKEN_SECRET || openaiKey || '';
+  return crypto.createHash('sha256').update(secret).digest();
+}
+
+function canonicalizePromptTokenFields(fields) {
+  return JSON.stringify({
+    name: fields.name,
+    birth: fields.birth,
+    destination: fields.destination,
+    gender: fields.gender,
+    resultSeed: fields.resultSeed || '',
+  });
+}
+
+function createPromptTokenFieldHash(fields, key) {
+  return crypto.createHmac('sha256', key).update(canonicalizePromptTokenFields(fields)).digest('base64url');
+}
+
+function sealImagePromptToken(imagePrompt, fields, openaiKey) {
+  const key = getImagePromptTokenKey(openaiKey);
+  const iv = crypto.randomBytes(12);
+  const cipher = crypto.createCipheriv('aes-256-gcm', key, iv);
+  cipher.setAAD(Buffer.from(IMAGE_PROMPT_TOKEN_VERSION));
+  const payload = JSON.stringify({
+    imagePrompt,
+    fieldsHash: createPromptTokenFieldHash(fields, key),
+    exp: Date.now() + IMAGE_PROMPT_TOKEN_TTL_MS,
+  });
+  const encrypted = Buffer.concat([cipher.update(payload, 'utf8'), cipher.final()]);
+  const tag = cipher.getAuthTag();
+  return [
+    IMAGE_PROMPT_TOKEN_VERSION,
+    iv.toString('base64url'),
+    encrypted.toString('base64url'),
+    tag.toString('base64url'),
+  ].join('.');
+}
+
+function openImagePromptToken(token, fields, openaiKey) {
+  const [version, iv, encrypted, tag] = String(token || '').split('.');
+  if (version !== IMAGE_PROMPT_TOKEN_VERSION || !iv || !encrypted || !tag) return null;
+  const key = getImagePromptTokenKey(openaiKey);
+  try {
+    const decipher = crypto.createDecipheriv('aes-256-gcm', key, Buffer.from(iv, 'base64url'));
+    decipher.setAAD(Buffer.from(IMAGE_PROMPT_TOKEN_VERSION));
+    decipher.setAuthTag(Buffer.from(tag, 'base64url'));
+    const decrypted = Buffer.concat([
+      decipher.update(Buffer.from(encrypted, 'base64url')),
+      decipher.final(),
+    ]).toString('utf8');
+    const payload = JSON.parse(decrypted);
+    if (!payload || payload.exp < Date.now()) return null;
+    if (payload.fieldsHash !== createPromptTokenFieldHash(fields, key)) return null;
+    if (typeof payload.imagePrompt !== 'string' || !payload.imagePrompt.trim()) return null;
+    return payload.imagePrompt.trim().slice(0, 2200);
+  } catch {
+    return null;
+  }
+}
+
 function fallbackKoreanName(fields) {
   const list = FALLBACK_KOREAN_NAMES[fields?.gender] || FALLBACK_KOREAN_NAMES.여성;
   const seed = `${fields?.resultSeed || ''}|${fields?.name || ''}|${fields?.birth || ''}|${fields?.destination || ''}|${fields?.gender || ''}`;
@@ -114,7 +180,7 @@ function fallbackKoreanName(fields) {
 
 function sanitizeKoreanName(value, fields) {
   const normalized = normalizeString(value, '').replace(/\s+/g, ' ').trim();
-  if (!normalized || !KOREAN_NAME_PATTERN.test(normalized)) return fallbackKoreanName(fields);
+  if (!normalized || !KOREAN_NAME_PATTERN.test(normalized) || UNSAFE_RESULT_TEXT.test(normalized)) return fallbackKoreanName(fields);
   return normalized;
 }
 
@@ -122,6 +188,24 @@ function sanitizeResultText(value, fallback = '') {
   const normalized = normalizeString(value, fallback);
   if (!normalized || UNSAFE_RESULT_TEXT.test(normalized)) return fallback;
   return normalized;
+}
+
+function buildSafeStoryFallbacks(fields) {
+  return [
+    `${fields.destination}의 아침 공기 속에서 ${fields.name}님은 여행의 첫 걸음을 가볍게 시작했습니다.`,
+    '작은 카페 앞에서 만난 사람은 밝은 미소로 여행 이야기를 자연스럽게 꺼냈습니다.',
+    '서로의 취향이 닮았다는 걸 알게 된 순간, 평범한 골목도 영화의 한 장면처럼 선명해졌습니다.',
+    '그 사람은 과하지 않은 친절함으로 길을 안내했고, 편안한 대화가 천천히 이어졌습니다.',
+    '여행 전 현대면세점에서 고른 행운의 아이템은 그날의 대화를 이어주는 작은 신호가 되었습니다.',
+    '새로운 풍경보다 더 오래 기억에 남은 건, 부담 없이 건넨 한마디와 따뜻한 미소였습니다.',
+    `${fields.destination}의 하루가 저물 때, 두 사람은 다음 여행 이야기를 웃으며 약속했습니다.`,
+  ];
+}
+
+function normalizeStory(value, fields) {
+  const rawStory = normalizeArray(value, 7);
+  const fallbacks = buildSafeStoryFallbacks(fields);
+  return fallbacks.map((fallback, index) => sanitizeResultText(rawStory[index], fallback));
 }
 
 function normalizePersonality(value) {
@@ -141,16 +225,16 @@ function normalizeResult(raw, fields, generationContext) {
     { ...fields, ethnicityInstruction: generationContext.ethnicity?.image },
   ).slice(0, 2200);
   const personality = normalizePersonality(raw?.personality);
-  const story = normalizeArray(raw?.story, 7);
+  const story = normalizeStory(raw?.story, fields);
 
   return {
     tagline: `${fields.name}님의 운명이 ${fields.destination}에서 기다리고 있습니다.`,
     name: sanitizeKoreanName(raw?.name, fields),
-    nationality: normalizeString(raw?.nationality, `${fields.destination}의 여행자`),
-    job: normalizeString(raw?.job, '여행자'),
+    nationality: sanitizeResultText(raw?.nationality, `${fields.destination}의 여행자`),
+    job: sanitizeResultText(raw?.job, '여행자'),
     personality,
     style: sanitizeResultText(raw?.style, generationContext.archetype),
-    quote: normalizeString(raw?.quote, '오늘은 그냥 지나치지 말아요.'),
+    quote: sanitizeResultText(raw?.quote, '오늘은 여행이 더 즐거워질 것 같아요.'),
     story,
     category,
     imagePrompt,
@@ -248,22 +332,27 @@ export default async function handler(req, res) {
         res.status(502).json({ error: 'TEXT_GENERATION_FAILED' });
         return;
       }
+      const normalized = normalizeResult(parsed, fields, generationContext);
+      const { imagePrompt, ...clientResult } = normalized;
+      const imagePromptToken = imagePrompt ? sealImagePromptToken(imagePrompt, fields, openaiKey) : '';
       rememberEthnicity(res, generationContext.ethnicity.id);
-      res.status(200).json({ result: normalizeResult(parsed, fields, generationContext) });
+      res.status(200).json({ result: clientResult, imagePromptToken });
       return;
     }
 
-    // type === 'image' — 텍스트 JSON의 imagePrompt를 우선 사용하고, 없으면 서버 fallback 프롬프트 사용.
+    // type === 'image' — 클라이언트에는 원문 imagePrompt를 노출하지 않고 암호화 토큰만 받는다.
     if (!openaiKey) {
       res.status(500).json({ error: 'OPENAI_API_KEY_MISSING' });
       return;
     }
-    const generationContext = buildGenerationContext(fields);
-    const suppliedPrompt = typeof body.imagePrompt === 'string' ? body.imagePrompt.trim() : '';
+    const sealedPrompt = typeof body.imagePromptToken === 'string' ? body.imagePromptToken.trim() : '';
+    const openedPrompt = openImagePromptToken(sealedPrompt, fields, openaiKey);
+    if (!openedPrompt) {
+      res.status(400).json({ error: 'INVALID_IMAGE_PROMPT_TOKEN' });
+      return;
+    }
     const imagePrompt = enforceImagePromptSafety(
-      suppliedPrompt && suppliedPrompt.length <= 2200
-        ? suppliedPrompt
-        : buildImagePrompt({ ...fields, generationContext }),
+      openedPrompt,
       fields,
     );
     const imagePayload = { model: IMAGE_MODEL, prompt: imagePrompt, n: 1, size: IMAGE_SIZE, quality: IMAGE_QUALITY };
