@@ -14,6 +14,7 @@ const CATEGORY_LINKS = {
   '전자/리빙': 'https://www.hddfs.com/shop/dm/best/monthly.do?goosCtgId=0008',
   주류: 'https://www.hddfs.com/shop/dm/best/monthly.do?goosCtgId=0014',
 };
+const MOBILE_HDF_HOST = 'm.hddfs.com';
 const LOADING_MESSAGES = [
   '눈코입을 만드는 중...',
   '여행지 버프 추가 중...',
@@ -81,6 +82,25 @@ function resolveEventShareUrl() {
   return globalThis.HDDFS_EVENT_URL || window.location.href;
 }
 
+function isMobileLanding() {
+  const ua = navigator.userAgent || '';
+  return /Android|iPhone|iPad|iPod|Mobile/i.test(ua)
+    || window.matchMedia?.('(pointer: coarse)').matches
+    || window.matchMedia?.('(max-width: 600px)').matches;
+}
+
+function resolveCategoryLink(category) {
+  const link = CATEGORY_LINKS[category] || CATEGORY_LINKS.향수;
+  if (!isMobileLanding()) return link;
+  try {
+    const url = new URL(link);
+    if (url.hostname === 'www.hddfs.com') url.hostname = MOBILE_HDF_HOST;
+    return url.toString();
+  } catch {
+    return link.replace('https://www.hddfs.com', `https://${MOBILE_HDF_HOST}`);
+  }
+}
+
 function normalizeGeneratedResult(result, form) {
   const story = Array.isArray(result?.story) ? result.story.filter(Boolean).slice(0, 7) : [];
   const personality = Array.isArray(result?.personality) ? result.personality.filter(Boolean).slice(0, 3) : [];
@@ -96,6 +116,32 @@ function normalizeGeneratedResult(result, form) {
     category: result?.category || '향수',
     isComic: Boolean(result?.isComic),
   };
+}
+
+function getIframeViewportHeight() {
+  return Math.round(
+    window.visualViewport?.height
+      || window.innerHeight
+      || document.documentElement?.clientHeight
+      || 0,
+  );
+}
+
+function syncResultPageHeight(node) {
+  const height = getIframeViewportHeight();
+  if (!node || height <= 0) return;
+  const value = `${height}px`;
+  node.style.height = value;
+  node.style.minHeight = value;
+  node.style.maxHeight = value;
+}
+
+function syncAllResultPageHeights() {
+  const resultPages = document.querySelectorAll('.result-page');
+  const hasResultPage = resultPages.length > 0;
+  document.documentElement.classList.toggle('has-result-page', hasResultPage);
+  document.body?.classList.toggle('has-result-page', hasResultPage);
+  resultPages.forEach(syncResultPageHeight);
 }
 
 function GenderDropdown({ value, onChange }) {
@@ -205,6 +251,61 @@ export default function App() {
     }, 2000);
     return () => clearInterval(timer);
   }, [isBusy]);
+
+  useEffect(() => {
+    let frame = 0;
+    let touchStartY = 0;
+    const sync = () => {
+      if (frame) cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        frame = 0;
+        syncAllResultPageHeights();
+      });
+    };
+
+    function findResultPage(target) {
+      return target?.closest?.('.result-page') || null;
+    }
+
+    function handleTouchStart(e) {
+      const resultPage = findResultPage(e.target);
+      if (!resultPage || e.touches.length !== 1) return;
+      touchStartY = e.touches[0].clientY;
+    }
+
+    function handleTouchMove(e) {
+      const resultPage = findResultPage(e.target);
+      if (!resultPage || e.touches.length !== 1) return;
+      const deltaY = e.touches[0].clientY - touchStartY;
+      const atTop = resultPage.scrollTop <= 0;
+      const atBottom = Math.ceil(resultPage.scrollTop + resultPage.clientHeight) >= resultPage.scrollHeight;
+      if ((atTop && deltaY > 0) || (atBottom && deltaY < 0)) e.preventDefault();
+    }
+
+    sync();
+    const observer = new MutationObserver(sync);
+    observer.observe(document.body, {
+      childList: true,
+      subtree: true,
+      attributes: true,
+      attributeFilter: ['class'],
+    });
+    window.addEventListener('resize', sync);
+    window.visualViewport?.addEventListener('resize', sync);
+    document.addEventListener('touchstart', handleTouchStart, { passive: true });
+    document.addEventListener('touchmove', handleTouchMove, { passive: false });
+
+    return () => {
+      if (frame) cancelAnimationFrame(frame);
+      observer.disconnect();
+      window.removeEventListener('resize', sync);
+      window.visualViewport?.removeEventListener('resize', sync);
+      document.removeEventListener('touchstart', handleTouchStart);
+      document.removeEventListener('touchmove', handleTouchMove);
+      document.documentElement.classList.remove('has-result-page');
+      document.body?.classList.remove('has-result-page');
+    };
+  }, []);
 
   function handleBirthKeyDown(e) {
     if (e.key !== 'Backspace') return;
@@ -383,7 +484,7 @@ export default function App() {
     }
   }
 
-  const itemLink = CATEGORY_LINKS[resultData?.category] || CATEGORY_LINKS.향수;
+  const itemLink = resolveCategoryLink(resultData?.category);
 
   return (
     <main className="app">
