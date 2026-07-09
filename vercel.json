@@ -1,8 +1,6 @@
 {
   "rewrites": [
-    { "source": "/", "destination": "/api/preview" },
-    { "source": "/preview", "destination": "/api/preview" },
-    { "source": "/widget", "destination": "/widget.html" }
+    { "source": "/widget", "destination": "/" }
   ],
   "functions": {
     "api/index.js": {
@@ -23,7 +21,7 @@
         { "key": "X-Content-Type-Options", "value": "nosniff" },
         { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
         { "key": "Strict-Transport-Security", "value": "max-age=63072000; includeSubDomains; preload" },
-        { "key": "Content-Security-Policy", "value": "default-src 'self' https: data: blob:; img-src 'self' https: data: blob:; style-src 'self' 'unsafe-inline' https:; script-src 'self' 'unsafe-inline' 'unsafe-eval' https:; connect-src 'self' https:; font-src 'self' https: data:; frame-src 'self' https://hyundai-dutyfree.vercel.app https://*.vercel.app https://*.hddfs.com https://www.googletagmanager.com; base-uri 'self' https://m.hddfs.com; frame-ancestors 'self' https://www.hddfs.com https://m.hddfs.com; object-src 'none'" }
+        { "key": "Content-Security-Policy", "value": "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; base-uri 'self'; frame-ancestors 'self' https://www.hddfs.com https://m.hddfs.com; object-src 'none'" }
       ]
     }
   ]
