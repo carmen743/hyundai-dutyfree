@@ -3,7 +3,7 @@ import path from 'node:path';
 
 const root = process.cwd();
 const distDir = path.join(root, 'dist');
-const htmlPath = path.join(distDir, 'index.html');
+const htmlPath = path.join(distDir, 'widget.html');
 const outPath = path.join(distDir, 'hyundai-dutyfree-embed.html');
 
 function readUtf8(file) {

@@ -1,6 +1,9 @@
 import { defineConfig } from 'vite';
 import react from '@vitejs/plugin-react';
+import { fileURLToPath } from 'node:url';
 import apiHandler from './api/index.js';
+
+const widgetHtml = fileURLToPath(new URL('./widget.html', import.meta.url));
 
 // .env 를 process.env 로 로드 (dev 미들웨어에서 API 키 사용)
 try { process.loadEnvFile(); } catch { /* .env 없음 → 외부 환경변수 사용 */ }
@@ -37,5 +40,10 @@ function apiDevMiddleware() {
 }
 
 export default defineConfig({
+  build: {
+    rollupOptions: {
+      input: widgetHtml,
+    },
+  },
   plugins: [react(), apiDevMiddleware()],
 });
