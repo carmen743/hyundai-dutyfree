@@ -35,7 +35,7 @@ function inlineStyles(html) {
 }
 
 function inlineScripts(html) {
-  const runtimeConfig = `<script>\nwindow.HDDFS_API_BASE = window.HDDFS_API_BASE || 'https://hyundai-dutyfree.vercel.app';\nwindow.HDDFS_EVENT_URL = window.HDDFS_EVENT_URL || 'https://www.hddfs.com/event/op/evnt/evntShop.do';\n</script>`;
+  const runtimeConfig = `<script>\nwindow.HDDFS_FORCE_WIDGET = true;\nwindow.HDDFS_API_BASE = window.HDDFS_API_BASE || 'https://hyundai-dutyfree.vercel.app';\nwindow.HDDFS_EVENT_URL = window.HDDFS_EVENT_URL || 'https://www.hddfs.com/event/op/evnt/evntShop.do';\n</script>`;
   return html.replace(/<script type="module" crossorigin src="([^"]+)"><\/script>/g, (_tag, src) => {
     const jsPath = path.join(distDir, src.replace(/^\//, ''));
     let js = readUtf8(jsPath);

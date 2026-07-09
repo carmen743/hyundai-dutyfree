@@ -1,4 +1,7 @@
 {
+  "rewrites": [
+    { "source": "/widget", "destination": "/" }
+  ],
   "functions": {
     "api/index.js": {
       "maxDuration": 180
